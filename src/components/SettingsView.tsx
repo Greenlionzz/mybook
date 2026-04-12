@@ -1,0 +1,240 @@
+import React from 'react';
+import { motion } from 'motion/react';
+import { 
+  Cloud, 
+  Settings, 
+  Database, 
+  Globe, 
+  HardDrive, 
+  ShieldCheck, 
+  RefreshCw, 
+  Wifi, 
+  Moon,
+  ExternalLink,
+  Lock,
+  User,
+  Link2
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+
+export function SettingsView() {
+  return (
+    <div className="p-6 pb-32 max-w-5xl mx-auto w-full flex flex-col gap-10">
+      <header className="flex flex-col gap-1">
+        <h2 className="text-3xl font-bold text-neutral-100">Settings</h2>
+        <p className="text-neutral-500">Manage your cloud connections and application preferences.</p>
+      </header>
+
+      {/* Cloud Connections Section */}
+      <section className="flex flex-col gap-6">
+        <div className="flex items-center gap-2 text-neutral-400">
+          <Cloud className="w-5 h-5" />
+          <h3 className="text-lg font-bold uppercase tracking-widest text-sm">Cloud Connections</h3>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6">
+          {/* Google Drive */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <Card className="bg-[#1f1f1f] border-white/5 overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                    <HardDrive className="w-6 h-6 text-blue-500" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg font-bold text-neutral-100">Google Drive</CardTitle>
+                    <CardDescription className="text-xs text-neutral-500">Sync your library with Google Drive storage.</CardDescription>
+                  </div>
+                </div>
+                <Button variant="outline" className="border-white/10 hover:bg-white/5 text-xs font-bold gap-2">
+                  <ExternalLink className="w-3 h-3" />
+                  Authenticate
+                </Button>
+              </CardHeader>
+            </Card>
+          </motion.div>
+
+          {/* Koofr & WebDAV Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Koofr */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <Card className="bg-[#1f1f1f] border-white/5 h-full">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Database className="w-6 h-6 text-primary" />
+                    </div>
+                    <CardTitle className="text-lg font-bold text-neutral-100">Koofr</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Server URL</Label>
+                    <div className="relative">
+                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" />
+                      <Input 
+                        placeholder="https://app.koofr.net/dav/Koofr" 
+                        className="bg-[#2a2a2a] border-none pl-10 focus-visible:ring-1 focus-visible:ring-primary"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Username</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" />
+                      <Input 
+                        placeholder="email@example.com" 
+                        className="bg-[#2a2a2a] border-none pl-10 focus-visible:ring-1 focus-visible:ring-primary"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Password / App Token</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" />
+                      <Input 
+                        type="password" 
+                        placeholder="••••••••••••" 
+                        className="bg-[#2a2a2a] border-none pl-10 focus-visible:ring-1 focus-visible:ring-primary"
+                      />
+                    </div>
+                  </div>
+                  <Button className="w-full bg-primary hover:bg-primary/90 text-white font-bold mt-2 gap-2">
+                    <Link2 className="w-4 h-4" />
+                    Connect Koofr
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* WebDAV */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <Card className="bg-[#1f1f1f] border-white/5 h-full">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
+                      <Globe className="w-6 h-6 text-orange-500" />
+                    </div>
+                    <CardTitle className="text-lg font-bold text-neutral-100">WebDAV</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Server URL</Label>
+                    <div className="relative">
+                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" />
+                      <Input 
+                        placeholder="https://dav.example.com" 
+                        className="bg-[#2a2a2a] border-none pl-10 focus-visible:ring-1 focus-visible:ring-primary"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Username</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" />
+                      <Input 
+                        placeholder="username" 
+                        className="bg-[#2a2a2a] border-none pl-10 focus-visible:ring-1 focus-visible:ring-primary"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" />
+                      <Input 
+                        type="password" 
+                        placeholder="••••••••••••" 
+                        className="bg-[#2a2a2a] border-none pl-10 focus-visible:ring-1 focus-visible:ring-primary"
+                      />
+                    </div>
+                  </div>
+                  <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold mt-2 gap-2">
+                    <Link2 className="w-4 h-4" />
+                    Connect WebDAV
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* App Preferences Section */}
+      <section className="flex flex-col gap-6">
+        <div className="flex items-center gap-2 text-neutral-400">
+          <Settings className="w-5 h-5" />
+          <h3 className="text-lg font-bold uppercase tracking-widest text-sm">App Preferences</h3>
+        </div>
+
+        <Card className="bg-[#1f1f1f] border-white/5 divide-y divide-white/5">
+          <div className="p-6 flex items-center justify-between group">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <RefreshCw className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-bold text-neutral-100">Auto-Sync Progress</p>
+                <p className="text-xs text-neutral-500">Automatically sync your listening position across devices.</p>
+              </div>
+            </div>
+            <Switch defaultChecked />
+          </div>
+
+          <div className="p-6 flex items-center justify-between group">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Wifi className="w-5 h-5 text-blue-500" />
+              </div>
+              <div>
+                <p className="font-bold text-neutral-100">Download over Wi-Fi only</p>
+                <p className="text-xs text-neutral-500">Save mobile data by restricting downloads to Wi-Fi connections.</p>
+              </div>
+            </div>
+            <Switch defaultChecked />
+          </div>
+
+          <div className="p-6 flex items-center justify-between group">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Moon className="w-5 h-5 text-purple-500" />
+              </div>
+              <div>
+                <p className="font-bold text-neutral-100">Dark/Light Theme</p>
+                <p className="text-xs text-neutral-500">Toggle between dark and light appearance.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold text-neutral-500 uppercase">Dark</span>
+              <Switch />
+              <span className="text-[10px] font-bold text-neutral-500 uppercase">Light</span>
+            </div>
+          </div>
+        </Card>
+      </section>
+
+      {/* Security Info */}
+      <div className="flex items-center justify-center gap-2 text-neutral-600 py-4">
+        <ShieldCheck className="w-4 h-4" />
+        <span className="text-xs font-medium">Your credentials are encrypted and stored locally.</span>
+      </div>
+    </div>
+  );
+}
