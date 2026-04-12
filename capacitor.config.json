@@ -1,0 +1,11 @@
+{
+  "appId": "com.mytime.app",
+  "appName": "SIRIN",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}
