@@ -2,6 +2,7 @@ import {
   SkipBack, 
   RotateCcw, 
   Play, 
+  Pause,
   RotateCw, 
   SkipForward, 
   Volume2, 
@@ -11,12 +12,14 @@ import {
   AlignJustify, 
   Moon,
   X,
-  Clock
+  Clock,
+  User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useAudio } from '@/src/context/AudioContext';
 
 interface PlayerBarProps {
   onOpenFullPlayer?: () => void;
@@ -24,8 +27,11 @@ interface PlayerBarProps {
 }
 
 export function PlayerBar({ onOpenFullPlayer, onClose }: PlayerBarProps) {
+  const { currentBook, isPlaying, currentTime, duration, togglePlay, skip, seek } = useAudio();
   const [showSleepTimer, setShowSleepTimer] = useState(false);
   const [activeTimer, setActiveTimer] = useState<number | null>(null);
+
+  if (!currentBook) return null;
 
   const timerOptions = [
     { label: 'Off', value: null },
@@ -34,6 +40,14 @@ export function PlayerBar({ onOpenFullPlayer, onClose }: PlayerBarProps) {
     { label: '45 min', value: 45 },
     { label: 'End of Chapter', value: 0 },
   ];
+
+  const formatTime = (time: number) => {
+    const mins = Math.floor(time / 60);
+    const secs = Math.floor(time % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-[#1f1f1f] border-t border-white/5 z-50 select-none">
@@ -44,20 +58,20 @@ export function PlayerBar({ onOpenFullPlayer, onClose }: PlayerBarProps) {
           onClick={onOpenFullPlayer}
         >
           <img 
-            src="https://picsum.photos/seed/wild/100/100" 
-            alt="Current Book" 
+            src={currentBook.cover} 
+            alt={currentBook.title} 
             className="w-10 h-10 md:w-12 md:h-12 rounded shadow-lg"
             referrerPolicy="no-referrer"
           />
           <div className="flex flex-col min-w-0">
-            <span className="text-xs md:text-sm font-semibold truncate text-neutral-100">The Call of the Wild</span>
+            <span className="text-xs md:text-sm font-semibold truncate text-neutral-100">{currentBook.title}</span>
             <div className="flex items-center gap-1.5 text-[10px] md:text-xs text-neutral-400">
               <User className="w-3 h-3" />
-              <span className="truncate">Jack London</span>
+              <span className="truncate">{currentBook.author}</span>
             </div>
             <div className="flex items-center gap-1.5 text-[10px] text-neutral-500">
               <Clock className="w-3 h-3" />
-              <span>52 : 28</span>
+              <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
             </div>
           </div>
         </div>
@@ -68,21 +82,39 @@ export function PlayerBar({ onOpenFullPlayer, onClose }: PlayerBarProps) {
             <Button variant="ghost" size="icon" className="text-neutral-400 hover:text-white hidden sm:flex">
               <SkipBack className="w-5 h-5 fill-current" />
             </Button>
-            <Button variant="ghost" size="icon" className="text-neutral-400 hover:text-white relative">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-neutral-400 hover:text-white relative"
+              onClick={() => skip(-15)}
+            >
               <RotateCcw className="w-5 h-5 md:w-6 md:h-6" />
-              <span className="absolute text-[7px] md:text-[8px] font-bold top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 mt-0.5">10</span>
+              <span className="absolute text-[7px] md:text-[8px] font-bold top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 mt-0.5">15</span>
             </Button>
-            <Button size="icon" className="w-9 h-9 md:w-11 md:w-11 rounded-full bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20">
-              <Play className="w-4 h-4 md:w-5 md:h-5 fill-current ml-1" />
+            <Button 
+              size="icon" 
+              className="w-9 h-9 md:w-11 md:h-11 rounded-full bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20"
+              onClick={togglePlay}
+            >
+              {isPlaying ? (
+                <Pause className="w-4 h-4 md:w-5 md:h-5 fill-current" />
+              ) : (
+                <Play className="w-4 h-4 md:w-5 md:h-5 fill-current ml-1" />
+              )}
             </Button>
-            <Button variant="ghost" size="icon" className="text-neutral-400 hover:text-white relative">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-neutral-400 hover:text-white relative"
+              onClick={() => skip(15)}
+            >
               <RotateCw className="w-5 h-5 md:w-6 md:h-6" />
-              <span className="absolute text-[7px] md:text-[8px] font-bold top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 mt-0.5">10</span>
+              <span className="absolute text-[7px] md:text-[8px] font-bold top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 mt-0.5">15</span>
             </Button>
             <Button variant="ghost" size="icon" className="text-neutral-400 hover:text-white hidden sm:flex">
               <SkipForward className="w-5 h-5 fill-current" />
             </Button>
-            <span className="text-[10px] md:text-xs font-bold text-neutral-400 ml-1 md:ml-2">1.1X</span>
+            <span className="text-[10px] md:text-xs font-bold text-neutral-400 ml-1 md:ml-2">1.0X</span>
           </div>
         </div>
 
@@ -159,9 +191,20 @@ export function PlayerBar({ onOpenFullPlayer, onClose }: PlayerBarProps) {
 
       {/* Progress Bar Container */}
       <div className="relative">
-        <div className="h-1 bg-white/10 w-full relative group cursor-pointer">
-          <div className="absolute top-0 left-0 h-full bg-white/20 w-[14%]" />
-          <div className="absolute top-0 left-0 h-full bg-primary w-[14%] group-hover:h-1.5 transition-all" />
+        <div 
+          className="h-1 bg-white/10 w-full relative group cursor-pointer"
+          onClick={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const percentage = x / rect.width;
+            seek(percentage * duration);
+          }}
+        >
+          <div className="absolute top-0 left-0 h-full bg-white/20 w-full" />
+          <div 
+            className="absolute top-0 left-0 h-full bg-primary group-hover:h-1.5 transition-all" 
+            style={{ width: `${progress}%` }}
+          />
           
           {/* Chapter Markers */}
           <div className="absolute top-0 left-1/4 h-full w-[1px] bg-black/40" />
@@ -172,31 +215,11 @@ export function PlayerBar({ onOpenFullPlayer, onClose }: PlayerBarProps) {
         
         {/* Time Info */}
         <div className="flex justify-between px-3 py-0.5 text-[9px] md:text-[10px] text-neutral-500 font-mono bg-black/20">
-          <span>7:12 / 14%</span>
+          <span>{formatTime(currentTime)} / {Math.round(progress)}%</span>
           <span className="uppercase tracking-[0.2em] font-bold text-neutral-400">Chapter 2</span>
-          <span>-41:08</span>
+          <span>-{formatTime(duration - currentTime)}</span>
         </div>
       </div>
     </div>
-  );
-}
-
-function User({ className }: { className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width="24" 
-      height="24" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-    </svg>
   );
 }

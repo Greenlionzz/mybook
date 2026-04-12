@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import { useAudio } from '@/src/context/AudioContext';
 
 interface FullPlayerProps {
   isOpen: boolean;
@@ -29,7 +30,20 @@ interface FullPlayerProps {
 }
 
 export function FullPlayer({ isOpen, onClose, book }: FullPlayerProps) {
-  if (!book) return null;
+  const { currentBook, isPlaying, currentTime, duration, togglePlay, skip, seek } = useAudio();
+  
+  // Use currentBook if available, otherwise fallback to prop
+  const activeBook = currentBook || book;
+
+  if (!activeBook) return null;
+
+  const formatTime = (time: number) => {
+    const mins = Math.floor(time / 60);
+    const secs = Math.floor(time % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
     <AnimatePresence>
@@ -72,8 +86,8 @@ export function FullPlayer({ isOpen, onClose, book }: FullPlayerProps) {
               >
                 <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full" />
                 <img 
-                  src={book.cover} 
-                  alt={book.title} 
+                  src={activeBook.cover} 
+                  alt={activeBook.title} 
                   className="w-full h-full object-cover rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative z-10"
                   referrerPolicy="no-referrer"
                 />
@@ -82,25 +96,26 @@ export function FullPlayer({ isOpen, onClose, book }: FullPlayerProps) {
               {/* Title & Author */}
               <div className="text-center flex flex-col gap-1 md:gap-2 w-full">
                 <h2 className="text-xl md:text-3xl font-bold text-neutral-100 line-clamp-2 leading-tight">
-                  {book.title}
+                  {activeBook.title}
                 </h2>
                 <div className="flex items-center justify-center gap-2 text-neutral-400 hover:text-primary cursor-pointer transition-colors">
                   <User className="w-3 h-3 md:w-4 md:h-4" />
-                  <span className="text-base md:text-lg font-medium">{book.author}</span>
+                  <span className="text-base md:text-lg font-medium">{activeBook.author}</span>
                 </div>
               </div>
 
               {/* Scrubber */}
               <div className="w-full flex flex-col gap-2">
                 <Slider 
-                  defaultValue={[14]} 
+                  value={[progress]} 
                   max={100} 
-                  step={1} 
+                  step={0.1} 
+                  onValueChange={(val) => seek((val[0] / 100) * duration)}
                   className="cursor-pointer"
                 />
                 <div className="flex justify-between text-[10px] md:text-[11px] font-mono text-neutral-500 font-bold">
-                  <span>07:12</span>
-                  <span>-41:08</span>
+                  <span>{formatTime(currentTime)}</span>
+                  <span>-{formatTime(duration - currentTime)}</span>
                 </div>
               </div>
 
@@ -110,16 +125,34 @@ export function FullPlayer({ isOpen, onClose, book }: FullPlayerProps) {
                   <Button variant="ghost" size="icon" className="text-neutral-400 hover:text-white w-10 h-10 md:w-12 md:h-12">
                     <SkipBack className="w-6 h-6 md:w-7 md:h-7 fill-current" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="text-neutral-400 hover:text-white relative w-10 h-10 md:w-12 md:h-12">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="text-neutral-400 hover:text-white relative w-10 h-10 md:w-12 md:h-12"
+                    onClick={() => skip(-15)}
+                  >
                     <RotateCcw className="w-7 h-7 md:w-8 md:h-8" />
                     <span className="absolute text-[8px] md:text-[10px] font-bold top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 mt-1">15</span>
                   </Button>
                   
-                  <Button size="icon" className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-primary hover:bg-primary/90 text-white shadow-2xl shadow-primary/40">
-                    <Play className="w-8 h-8 md:w-10 md:h-10 fill-current ml-1 md:ml-2" />
+                  <Button 
+                    size="icon" 
+                    className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-primary hover:bg-primary/90 text-white shadow-2xl shadow-primary/40"
+                    onClick={togglePlay}
+                  >
+                    {isPlaying ? (
+                      <Pause className="w-8 h-8 md:w-10 md:h-10 fill-current" />
+                    ) : (
+                      <Play className="w-8 h-8 md:w-10 md:h-10 fill-current ml-1 md:ml-2" />
+                    )}
                   </Button>
 
-                  <Button variant="ghost" size="icon" className="text-neutral-400 hover:text-white relative w-10 h-10 md:w-12 md:h-12">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="text-neutral-400 hover:text-white relative w-10 h-10 md:w-12 md:h-12"
+                    onClick={() => skip(15)}
+                  >
                     <RotateCw className="w-7 h-7 md:w-8 md:h-8" />
                     <span className="absolute text-[8px] md:text-[10px] font-bold top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 mt-1">15</span>
                   </Button>

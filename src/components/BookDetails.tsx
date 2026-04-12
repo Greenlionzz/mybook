@@ -6,9 +6,10 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Play, List, Bookmark, Share2, Download, MoreHorizontal, User, Clock } from "lucide-react";
+import { Play, Pause, List, Bookmark, Share2, Download, MoreHorizontal, User, Clock } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { useAudio } from "@/src/context/AudioContext";
 
 interface BookDetailsProps {
   book: {
@@ -17,13 +18,20 @@ interface BookDetailsProps {
     author: string;
     cover: string;
     description: string;
+    status: string;
+    genre: string;
+    dateAdded: string;
   } | null;
   isOpen: boolean;
   onClose: () => void;
 }
 
 export function BookDetails({ book, isOpen, onClose }: BookDetailsProps) {
+  const { playBook, currentBook, isPlaying, togglePlay } = useAudio();
+  
   if (!book) return null;
+
+  const isCurrent = currentBook?.id === book.id;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -41,9 +49,27 @@ export function BookDetails({ book, isOpen, onClose }: BookDetailsProps) {
             </div>
             
             <div className="flex flex-col w-full gap-3">
-              <Button className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12 gap-2">
-                <Play className="w-5 h-5 fill-current" />
-                PLAY
+              <Button 
+                className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12 gap-2"
+                onClick={() => {
+                  if (isCurrent) {
+                    togglePlay();
+                  } else {
+                    playBook(book as any);
+                  }
+                }}
+              >
+                {isCurrent && isPlaying ? (
+                  <>
+                    <Pause className="w-5 h-5 fill-current" />
+                    PAUSE
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-5 h-5 fill-current" />
+                    PLAY
+                  </>
+                )}
               </Button>
               <div className="grid grid-cols-2 gap-2">
                 <Button variant="secondary" className="bg-[#2a2a2a] hover:bg-[#333] border-none text-xs h-10 gap-2">

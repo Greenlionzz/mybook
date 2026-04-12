@@ -31,9 +31,12 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 
+import { useAudio } from './context/AudioContext';
+
 const ITEMS_PER_PAGE = 12;
 
 export default function App() {
+  const { currentBook } = useAudio();
   const [selectedBook, setSelectedBook] = useState<typeof BOOKS[0] | null>(null);
   const [isFullPlayerOpen, setIsFullPlayerOpen] = useState(false);
   const [currentView, setCurrentView] = useState('home');
@@ -124,9 +127,6 @@ export default function App() {
       setHasMore(true);
     }
   }, [currentView, sortBy, filterBy, genreFilter]);
-
-  // Mock currently playing book
-  const currentlyPlaying = BOOKS.find(b => b.id === '7') || BOOKS[0];
 
   return (
     <div className="flex flex-col h-screen bg-[#1a1a1a] text-white overflow-hidden">
@@ -300,7 +300,7 @@ export default function App() {
       <FullPlayer 
         isOpen={isFullPlayerOpen} 
         onClose={() => setIsFullPlayerOpen(false)} 
-        book={currentlyPlaying}
+        book={currentBook as any}
       />
 
       {isPlayerVisible && (

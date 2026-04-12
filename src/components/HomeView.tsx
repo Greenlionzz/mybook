@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { 
   Play, 
+  Pause,
   Flame, 
   Clock, 
   ChevronRight, 
@@ -14,11 +15,23 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { BOOKS } from '@/src/constants';
+import { useAudio } from '@/src/context/AudioContext';
 
 export function HomeView() {
-  const currentlyPlaying = BOOKS[6]; // The Call of the Wild
+  const { currentBook, isPlaying, togglePlay, playBook, currentTime, duration } = useAudio();
+  
+  // Use currentBook if available, otherwise default to a book
+  const heroBook = currentBook || BOOKS[6]; // The Call of the Wild
   const recentlyAdded = BOOKS.slice(0, 8);
   const upNext = BOOKS.slice(8, 11);
+
+  const formatTime = (time: number) => {
+    const mins = Math.floor(time / 60);
+    const secs = Math.floor(time % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 49; // Default 49% for demo if no duration
 
   return (
     <div className="p-6 pb-32 max-w-7xl mx-auto w-full flex flex-col gap-10">
@@ -35,8 +48,8 @@ export function HomeView() {
             <div className="p-6 md:p-8 flex flex-col md:flex-row gap-8 items-center relative z-10">
               <div className="w-32 h-32 md:w-48 md:h-48 shrink-0 shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-lg overflow-hidden border border-white/10">
                 <img 
-                  src={currentlyPlaying.cover} 
-                  alt={currentlyPlaying.title} 
+                  src={heroBook.cover} 
+                  alt={heroBook.title} 
                   className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"
                 />
@@ -45,36 +58,53 @@ export function HomeView() {
               <div className="flex-1 flex flex-col gap-4 text-center md:text-left">
                 <div className="flex items-center justify-center md:justify-start gap-2 text-primary">
                   <History className="w-4 h-4" />
-                  <span className="text-xs font-bold uppercase tracking-widest">Continue Listening</span>
+                  <span className="text-xs font-bold uppercase tracking-widest">
+                    {currentBook?.id === heroBook.id && isPlaying ? 'Now Playing' : 'Continue Listening'}
+                  </span>
                 </div>
                 
                 <div className="space-y-1">
                   <h2 className="text-2xl md:text-4xl font-black text-neutral-100 tracking-tight line-clamp-2">
-                    {currentlyPlaying.title}
+                    {heroBook.title}
                   </h2>
-                  <p className="text-lg text-neutral-400 font-medium">{currentlyPlaying.author}</p>
+                  <p className="text-lg text-neutral-400 font-medium">{heroBook.author}</p>
                 </div>
 
                 <div className="space-y-2 mt-2">
                   <div className="flex justify-between text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
-                    <span>52:28 / 1:45:00</span>
-                    <span>49% Complete</span>
+                    <span>{formatTime(currentTime)} / {formatTime(duration || 6300)}</span>
+                    <span>{Math.round(progress)}% Complete</span>
                   </div>
                   <div className="h-2 bg-neutral-800 rounded-full overflow-hidden">
                     <motion.div 
                       initial={{ width: 0 }}
-                      animate={{ width: '49%' }}
+                      animate={{ width: `${progress}%` }}
                       transition={{ duration: 1, delay: 0.5 }}
                       className="h-full bg-primary shadow-[0_0_10px_rgba(34,197,94,0.5)]" 
                     />
                   </div>
                 </div>
 
-                <Button className="bg-primary hover:bg-primary/90 text-white font-bold px-8 py-6 rounded-xl mt-2 w-full md:w-fit gap-3 group/btn shadow-xl shadow-primary/20">
+                <Button 
+                  className="bg-primary hover:bg-primary/90 text-white font-bold px-8 py-6 rounded-xl mt-2 w-full md:w-fit gap-3 group/btn shadow-xl shadow-primary/20"
+                  onClick={() => {
+                    if (currentBook?.id === heroBook.id) {
+                      togglePlay();
+                    } else {
+                      playBook(heroBook as any);
+                    }
+                  }}
+                >
                   <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center group-hover/btn:scale-110 transition-transform">
-                    <Play className="w-4 h-4 fill-current ml-0.5" />
+                    {currentBook?.id === heroBook.id && isPlaying ? (
+                      <Pause className="w-4 h-4 fill-current" />
+                    ) : (
+                      <Play className="w-4 h-4 fill-current ml-0.5" />
+                    )}
                   </div>
-                  <span className="text-lg">Resume Playback</span>
+                  <span className="text-lg">
+                    {currentBook?.id === heroBook.id && isPlaying ? 'Pause Playback' : 'Resume Playback'}
+                  </span>
                 </Button>
               </div>
             </div>
@@ -162,14 +192,24 @@ export function HomeView() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.05 }}
               className="w-32 md:w-40 shrink-0 group cursor-pointer"
+              onClick={() => playBook(book as any)}
             >
-              <div className="aspect-square rounded-lg overflow-hidden mb-3 shadow-lg border border-white/5 group-hover:border-primary/50 transition-all duration-300 group-hover:-translate-y-1">
+              <div className="aspect-square rounded-lg overflow-hidden mb-3 shadow-lg border border-white/5 group-hover:border-primary/50 transition-all duration-300 group-hover:-translate-y-1 relative">
                 <img 
                   src={book.cover} 
                   alt={book.title} 
                   className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"
                 />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shadow-lg">
+                    {currentBook?.id === book.id && isPlaying ? (
+                      <Pause className="w-5 h-5 text-white fill-current" />
+                    ) : (
+                      <Play className="w-5 h-5 text-white fill-current ml-0.5" />
+                    )}
+                  </div>
+                </div>
               </div>
               <h4 className="text-sm font-bold text-neutral-200 line-clamp-1 group-hover:text-primary transition-colors">
                 {book.title}
@@ -194,6 +234,7 @@ export function HomeView() {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.1 }}
+              onClick={() => playBook(book as any)}
             >
               <Card className="bg-[#1f1f1f] border-white/5 hover:bg-[#252525] transition-colors cursor-pointer group p-3">
                 <div className="flex gap-4 items-center">
@@ -215,8 +256,20 @@ export function HomeView() {
                       <span className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest">Queued</span>
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon" className="text-neutral-600 group-hover:text-primary">
-                    <Play className="w-4 h-4" />
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="text-neutral-600 group-hover:text-primary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      playBook(book as any);
+                    }}
+                  >
+                    {currentBook?.id === book.id && isPlaying ? (
+                      <Pause className="w-4 h-4 fill-current" />
+                    ) : (
+                      <Play className="w-4 h-4 fill-current" />
+                    )}
                   </Button>
                 </div>
               </Card>
