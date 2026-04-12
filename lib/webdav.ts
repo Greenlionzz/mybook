@@ -1,3 +1,5 @@
+import { CapacitorHttp } from '@capacitor/core';
+
 export const getKoofrCredentials = () => {
   return {
     url: localStorage.getItem('koofr_url') || 'https://app.koofr.net/dav/Koofr',
@@ -6,6 +8,7 @@ export const getKoofrCredentials = () => {
   };
 };
 
+// Generate the direct WebDAV streaming URL for the <audio> tag
 export const getDirectStreamUrl = (filePath: string) => {
   const { url, user, pass } = getKoofrCredentials();
   if (!user || !pass) return null;
@@ -23,18 +26,23 @@ export const getDirectStreamUrl = (filePath: string) => {
   return `${protocol}//${encodedUser}:${encodedPass}@${domainAndPath}${encodedFilePath}`;
 };
 
+// Test Connection using explicit CapacitorHttp
 export const testWebdavConnection = async (url: string, user: string, pass: string) => {
   try {
     const auth = btoa(user + ':' + pass);
-    const response = await fetch('https://app.koofr.net/api/v2/mounts/primary/files/list?path=/', {
-      method: 'GET',
+    
+    // Bypassing fetch() to avoid the JSON parse crash
+    const response = await CapacitorHttp.get({
+      url: 'https://app.koofr.net/api/v2/mounts/primary/files/list?path=/',
       headers: {
-        'Authorization': `Basic ${auth}`
-      }
+        'Authorization': `Basic ${auth}`,
+        'Accept': 'application/json'
+      },
+      responseType: 'text' // Forces Capacitor to stop guessing and crashing
     });
 
-    if (!response.ok) {
-      return { success: false, message: `Server returned status ${response.status}` };
+    if (response.status !== 200) {
+      return { success: false, message: `Server rejected credentials (Status ${response.status}). Check your App Password.` };
     }
     
     return { success: true };
@@ -44,6 +52,7 @@ export const testWebdavConnection = async (url: string, user: string, pass: stri
   }
 };
 
+// Fetch Library using explicit CapacitorHttp
 export const fetchCloudLibrary = async (directoryPath: string = "/") => {
   const { user, pass } = getKoofrCredentials();
   if (!user || !pass) return [];
@@ -52,16 +61,19 @@ export const fetchCloudLibrary = async (directoryPath: string = "/") => {
     const auth = btoa(user + ':' + pass);
     const safePath = directoryPath.startsWith('/') ? directoryPath : `/${directoryPath}`;
 
-    const response = await fetch(`https://app.koofr.net/api/v2/mounts/primary/files/list?path=${safePath}`, {
-      method: 'GET',
+    const response = await CapacitorHttp.get({
+      url: `https://app.koofr.net/api/v2/mounts/primary/files/list?path=${safePath}`,
       headers: {
-        'Authorization': `Basic ${auth}`
-      }
+        'Authorization': `Basic ${auth}`,
+        'Accept': 'application/json'
+      },
+      responseType: 'text'
     });
 
-    if (!response.ok) throw new Error("Failed to fetch folder");
+    if (response.status !== 200) throw new Error(`Status ${response.status}`);
 
-    const data = await response.json();
+    // Parse the JSON safely ourselves
+    const data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
     
     const audioFiles = data.files.filter((item: any) => 
       item.type === 'file' && 
