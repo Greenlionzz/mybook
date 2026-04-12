@@ -1,114 +1,199 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FolderHeart, Plus, MoreVertical, Book, ArrowUpDown } from 'lucide-react';
+import { Book, Play, Pause, Search, X, FolderHeart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
-const COLLECTIONS = [
-  { id: 'c1', name: 'Favorites', count: 12, color: 'bg-red-500/20 text-red-500' },
-  { id: 'c2', name: 'To Listen', count: 45, color: 'bg-blue-500/20 text-blue-400' },
-  { id: 'c3', name: 'Philosophy', count: 8, color: 'bg-purple-500/20 text-purple-400' },
-  { id: 'c4', name: 'Summer Reads', count: 15, color: 'bg-orange-500/20 text-orange-400' },
-  { id: 'c5', name: 'Finished 2023', count: 32, color: 'bg-green-500/20 text-green-400' },
-];
+import { Input } from '@/components/ui/input';
+import { useAudio } from '@/src/context/AudioContext';
+import { fetchCloudLibrary } from '../../lib/webdav';
 
 export function CollectionsView() {
-  const [sortBy, setSortBy] = useState('name');
+  const { currentBook, isPlaying, playBook, togglePlay } = useAudio();
+  
+  const [cloudBooks, setCloudBooks] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // State for our new Tracklist Modal
+  const [selectedFolder, setSelectedFolder] = useState<any | null>(null);
 
-  const sortedCollections = useMemo(() => {
-    const result = [...COLLECTIONS];
-    if (sortBy === 'name') {
-      result.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (sortBy === 'count') {
-      result.sort((a, b) => b.count - a.count);
+  // Load from cache instantly when you switch to this tab!
+  useEffect(() => {
+    loadLibrary();
+  }, []);
+
+  const loadLibrary = async () => {
+    setIsLoading(true);
+    const files = await fetchCloudLibrary('/Audiobooks', false); // false = use cache!
+    setCloudBooks(files);
+    setIsLoading(false);
+  };
+
+  // Filter books based on search bar
+  const filteredBooks = cloudBooks.filter(book => 
+    book.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Handle clicking a book card
+  const handleBookClick = (book: any) => {
+    if (book.audioParts && book.audioParts.length > 1) {
+      // It's a folder with multiple parts! Open the modal.
+      setSelectedFolder(book);
+    } else {
+      // It's a single file. Play it immediately.
+      playBook(book);
     }
-    return result;
-  }, [sortBy]);
+  };
 
   return (
-    <div className="p-6 pb-32 max-w-5xl mx-auto w-full flex flex-col gap-8">
+    <div className="p-6 pb-32 max-w-7xl mx-auto w-full flex flex-col gap-8 relative">
       <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h2 className="text-3xl font-bold text-neutral-100">Collections</h2>
-          <p className="text-neutral-500">Organize your library into custom folders.</p>
+          <h2 className="text-3xl font-bold text-neutral-100">My Library</h2>
+          <p className="text-neutral-500">
+            {isLoading ? 'Loading your audiobooks...' : `${cloudBooks.length} books synced from Koofr`}
+          </p>
         </div>
-        <div className="flex items-center gap-4 w-full sm:w-auto">
-          <div className="flex items-center gap-2 shrink-0">
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[140px] h-10 bg-[#1f1f1f] border-white/5 text-sm focus:ring-0">
-                <SelectValue placeholder="Sort" />
-              </SelectTrigger>
-              <SelectContent className="bg-[#1f1f1f] border-white/10 text-white">
-                <SelectItem value="name">Name (A-Z)</SelectItem>
-                <SelectItem value="count">Book Count</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <Button className="bg-primary hover:bg-primary/90 text-white font-bold gap-2 whitespace-nowrap">
-            <Plus className="w-4 h-4" />
-            New Collection
-          </Button>
+        
+        {/* Search Bar */}
+        <div className="relative w-full sm:w-72">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
+          <Input 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search library..." 
+            className="bg-[#1f1f1f] border-white/5 pl-10 text-white focus-visible:ring-1 focus-visible:ring-primary h-10"
+          />
         </div>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Main Grid of All Books */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
         <AnimatePresence mode="popLayout">
-          {sortedCollections.map((collection, index) => (
+          {filteredBooks.map((book, index) => (
             <motion.div
-              key={collection.id}
+              key={book.id}
               layout
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ delay: index * 0.05 }}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ delay: Math.min(index * 0.05, 0.5) }} // Cap delay so large libraries load fast
+              className="group cursor-pointer"
+              onClick={() => handleBookClick(book)}
             >
-            <Card className="bg-[#1f1f1f] border-white/5 hover:bg-[#252525] transition-colors cursor-pointer group p-5">
-              <div className="flex items-center justify-between mb-6">
-                <div className={`w-12 h-12 rounded-xl ${collection.color} flex items-center justify-center`}>
-                  <FolderHeart className="w-6 h-6" />
-                </div>
-                <Button variant="ghost" size="icon" className="text-neutral-600 hover:text-white">
-                  <MoreVertical className="w-4 h-4" />
-                </Button>
-              </div>
-              
-              <div className="space-y-1">
-                <h3 className="text-xl font-bold text-neutral-100 group-hover:text-primary transition-colors">
-                  {collection.name}
-                </h3>
-                <div className="flex items-center gap-2 text-neutral-500">
-                  <Book className="w-3 h-3" />
-                  <span className="text-xs font-bold uppercase tracking-widest">{collection.count} Books</span>
-                </div>
-              </div>
-
-              <div className="mt-6 flex -space-x-3">
-                {[...Array(Math.min(collection.count, 4))].map((_, i) => (
-                  <div 
-                    key={i} 
-                    className="w-10 h-10 rounded-lg border-2 border-[#1f1f1f] bg-neutral-800 overflow-hidden shadow-xl"
-                  >
-                    <img src={`https://picsum.photos/seed/${collection.id}-${i}/100/100`} alt="" className="w-full h-full object-cover" />
-                  </div>
-                ))}
-                {collection.count > 4 && (
-                  <div className="w-10 h-10 rounded-lg border-2 border-[#1f1f1f] bg-neutral-800 flex items-center justify-center text-[10px] font-bold text-neutral-400 shadow-xl">
-                    +{collection.count - 4}
+              <div className="aspect-square rounded-xl overflow-hidden mb-3 shadow-lg border border-white/5 group-hover:border-primary/50 transition-all duration-300 group-hover:-translate-y-1 relative bg-neutral-800">
+                <img 
+                  src={book.cover} 
+                  alt={book.title} 
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+                
+                {/* Folder Icon Badge if it has multiple parts */}
+                {book.audioParts && book.audioParts.length > 1 && (
+                  <div className="absolute top-2 right-2 w-8 h-8 rounded-lg bg-black/60 backdrop-blur-md flex items-center justify-center border border-white/10">
+                    <FolderHeart className="w-4 h-4 text-primary" />
                   </div>
                 )}
+
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition-all">
+                    {currentBook?.id === book.id && isPlaying && (!book.audioParts || book.audioParts.length === 1) ? (
+                      <Pause className="w-6 h-6 text-white fill-current" />
+                    ) : (
+                      <Play className="w-6 h-6 text-white fill-current ml-1" />
+                    )}
+                  </div>
+                </div>
               </div>
-            </Card>
-          </motion.div>
-        ))}
+              <h4 className="text-sm font-bold text-neutral-200 line-clamp-2 group-hover:text-primary transition-colors leading-tight">
+                {book.title}
+              </h4>
+              <p className="text-xs text-neutral-500 mt-1 truncate">
+                {book.audioParts && book.audioParts.length > 1 ? `${book.audioParts.length} Parts` : book.author}
+              </p>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
+      {/* Tracklist Modal (Appears when you click a folder) */}
+      <AnimatePresence>
+        {selectedFolder && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedFolder(null)}>
+            <motion.div
+              initial={{ opacity: 0, y: 100 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 100 }}
+              onClick={(e) => e.stopPropagation()} // Stop clicks from closing modal
+              className="bg-[#1f1f1f] border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[80vh] shadow-2xl"
+            >
+              {/* Modal Header */}
+              <div className="p-6 flex gap-4 items-center border-b border-white/5 bg-neutral-900/50">
+                <img src={selectedFolder.cover} className="w-16 h-16 rounded-lg object-cover shadow-md" />
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-lg text-white line-clamp-1">{selectedFolder.title}</h3>
+                  <p className="text-sm text-neutral-400 font-medium tracking-wide">
+                    {selectedFolder.audioParts?.length || 0} Tracks Found
+                  </p>
+                </div>
+                <Button variant="ghost" size="icon" className="shrink-0 text-neutral-400 hover:text-white hover:bg-white/10" onClick={() => setSelectedFolder(null)}>
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+
+              {/* Scrollable Tracklist */}
+              <div className="overflow-y-auto p-3 custom-scrollbar flex-1">
+                {selectedFolder.audioParts?.map((url: string, i: number) => {
+                  // We dynamically create a unique ID for each part so the player knows which one is playing
+                  const uniquePartId = `${selectedFolder.id}-part-${i}`;
+                  const isThisPartPlaying = currentBook?.id === uniquePartId && isPlaying;
+
+                  return (
+                    <button
+                      key={i}
+                      className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all text-left group
+                        ${currentBook?.id === uniquePartId ? 'bg-primary/10 border border-primary/20' : 'hover:bg-white/5 border border-transparent'}
+                      `}
+                      onClick={() => {
+                        // Create a temporary "Book" specifically for this track
+                        const partBook = {
+                          ...selectedFolder,
+                          id: uniquePartId, 
+                          title: `${selectedFolder.title} (Part ${i + 1})`,
+                          audioUrl: url
+                        };
+                        
+                        if (currentBook?.id === uniquePartId) {
+                          togglePlay(); // Pause if already playing
+                        } else {
+                          playBook(partBook); // Play new track
+                        }
+                      }}
+                    >
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors shadow-sm
+                        ${currentBook?.id === uniquePartId ? 'bg-primary text-white' : 'bg-neutral-800 text-neutral-500 group-hover:bg-neutral-700 group-hover:text-white'}
+                      `}>
+                        {isThisPartPlaying ? <div className="w-3 h-3 bg-white rounded-sm animate-pulse" /> : i + 1}
+                      </div>
+                      
+                      <div className="flex-1 truncate text-sm font-bold text-neutral-200 group-hover:text-white transition-colors">
+                        Part {i + 1}
+                      </div>
+                      
+                      {isThisPartPlaying ? (
+                        <Pause className="w-5 h-5 text-primary" />
+                      ) : (
+                        <Play className={`w-5 h-5 ${currentBook?.id === uniquePartId ? 'text-primary' : 'text-neutral-600 group-hover:text-white'}`} />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
     </div>
-  </div>
   );
 }

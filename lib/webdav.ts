@@ -47,8 +47,23 @@ export const testWebdavConnection = async (url: string, user: string, pass: stri
   }
 };
 
-// Upgraded Deep-Scan Library Fetcher
-export const fetchCloudLibrary = async (directoryPath: string = "/") => {
+// Upgraded Deep-Scan Library Fetcher WITH CACHING
+export const fetchCloudLibrary = async (directoryPath: string = "/", forceRefresh: boolean = false) => {
+  const CACHE_KEY = `koofr_library_cache_${directoryPath}`;
+
+  // 1. If we aren't forcing a refresh, check the cache first!
+  if (!forceRefresh) {
+    const cachedData = localStorage.getItem(CACHE_KEY);
+    if (cachedData) {
+      try {
+        return JSON.parse(cachedData); // Return instantly!
+      } catch (e) {
+        console.error("Cache parsing error", e);
+      }
+    }
+  }
+
+  // 2. If forced refresh or no cache, scan Koofr...
   const { user, pass } = getKoofrCredentials();
   if (!user || !pass) return [];
 
@@ -56,7 +71,6 @@ export const fetchCloudLibrary = async (directoryPath: string = "/") => {
     const auth = btoa(user + ':' + pass);
     const safePath = directoryPath.startsWith('/') ? directoryPath : `/${directoryPath}`;
 
-    // 1. Look at the main folder (e.g., /Audiobooks)
     const response = await CapacitorHttp.get({
       url: `https://app.koofr.net/api/v2/mounts/primary/files/list?path=${safePath}`,
       headers: { 'Authorization': `Basic ${auth}`, 'Accept': 'application/json' },
@@ -68,7 +82,7 @@ export const fetchCloudLibrary = async (directoryPath: string = "/") => {
     
     let allBooks: any[] = [];
 
-    // 2. Handle Standalone Files (If you have any random MP3s lying around)
+    // Handle Standalone Files
     const standaloneFiles = data.files.filter((item: any) => 
       item.type === 'file' && (item.name.endsWith('.mp3') || item.name.endsWith('.m4a') || item.name.endsWith('.m4b'))
     );
@@ -90,10 +104,8 @@ export const fetchCloudLibrary = async (directoryPath: string = "/") => {
     
     allBooks = [...standaloneBooks];
 
-    // 3. Handle Folders (Deep Scan)
+    // Handle Folders
     const folders = data.files.filter((item: any) => item.type === 'dir');
-
-    // Make the app look inside every folder simultaneously
     const folderBooks = await Promise.all(folders.map(async (folder: any) => {
       const folderPath = safePath === '/' ? `/${folder.name}` : `${safePath}/${folder.name}`;
       
@@ -107,27 +119,22 @@ export const fetchCloudLibrary = async (directoryPath: string = "/") => {
         if (folderRes.status === 200) {
           const folderData = typeof folderRes.data === 'string' ? JSON.parse(folderRes.data) : folderRes.data;
           
-          // Find all audio files in the folder and SORT them alphabetically so Part 1 is first
           const audioParts = folderData.files.filter((item: any) => 
             item.type === 'file' && (item.name.endsWith('.mp3') || item.name.endsWith('.m4a') || item.name.endsWith('.m4b'))
           ).sort((a: any, b: any) => a.name.localeCompare(b.name));
 
           if (audioParts.length > 0) {
-            // Treat the folder itself as the "Book"
             const firstPartPath = `${folderPath}/${audioParts[0].name}`;
-            
             return {
               id: folder.name,
-              title: folder.name, // Using folder name as book title
+              title: folder.name,
               author: "Cloud Library",
               cover: "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=800",
               description: `${audioParts.length} parts found inside.`,
               status: "Unread",
               genre: "Cloud Audio",
               dateAdded: new Date().toISOString(),
-              // Stream the very first part immediately when clicked
               audioUrl: getDirectStreamUrl(firstPartPath),
-              // Save the rest of the parts for continuous playback later
               audioParts: audioParts.map((part: any) => getDirectStreamUrl(`${folderPath}/${part.name}`))
             };
           }
@@ -138,9 +145,10 @@ export const fetchCloudLibrary = async (directoryPath: string = "/") => {
       return null;
     }));
 
-    // Filter out empty folders and add the valid books to the library
-    const validFolderBooks = folderBooks.filter(book => book !== null);
-    allBooks = [...allBooks, ...validFolderBooks];
+    allBooks = [...allBooks, ...folderBooks.filter(book => book !== null)];
+
+    // 3. Save the final list to cache before returning!
+    localStorage.setItem(CACHE_KEY, JSON.stringify(allBooks));
 
     return allBooks;
 

@@ -19,13 +19,17 @@ export function HomeView() {
     loadLibrary();
   }, []);
 
-  const loadLibrary = async () => {
+    const loadLibrary = async (force: boolean = false) => {
     setIsLoading(true);
-    // Explicitly scan the Audiobooks folder!
-    const files = await fetchCloudLibrary('/Audiobooks'); 
+    // Notice the 'force' parameter we are passing!
+    const files = await fetchCloudLibrary('/Audiobooks', force); 
     setCloudBooks(files);
     setIsLoading(false);
   };
+
+  useEffect(() => {
+    loadLibrary(false); // Normal load uses the instant cache
+  }, []);
 
   // Grab the first 8 for "Recently Added" and the next few for "Up Next"
   const recentlyAdded = cloudBooks.length > 0 ? cloudBooks.slice(0, 8) : [];
@@ -49,7 +53,7 @@ export function HomeView() {
   return (
     <div className="p-6 pb-32 max-w-7xl mx-auto w-full flex flex-col gap-10">
       <div className="flex justify-end">
-        <Button variant="outline" size="sm" onClick={loadLibrary} disabled={isLoading} className="border-white/10 text-neutral-400 hover:text-white">
+        <Button variant="outline" size="sm" onClick={() => loadLibrary(true)} disabled={isLoading} className="border-white/10 text-neutral-400 hover:text-white">
           <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
           {isLoading ? 'Scanning...' : 'Refresh Library'}
         </Button>
