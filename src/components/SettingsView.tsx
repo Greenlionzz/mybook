@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { 
   Cloud, 
@@ -20,8 +20,41 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { testWebdavConnection } from '@/lib/webdav';
 
 export function SettingsView() {
+  // Koofr State Management
+  const [koofrUrl, setKoofrUrl] = useState('https://app.koofr.net/dav/Koofr');
+  const [koofrUser, setKoofrUser] = useState('');
+  const [koofrPass, setKoofrPass] = useState('');
+  const [isTesting, setIsTesting] = useState(false);
+
+  // Load saved credentials when the page opens
+  useEffect(() => {
+    setKoofrUrl(localStorage.getItem('koofr_url') || 'https://app.koofr.net/dav/Koofr');
+    setKoofrUser(localStorage.getItem('koofr_user') || '');
+    setKoofrPass(localStorage.getItem('koofr_pass') || '');
+  }, []);
+
+  const handleConnectKoofr = async () => {
+    setIsTesting(true);
+    
+    // Save to local storage
+    localStorage.setItem('koofr_url', koofrUrl);
+    localStorage.setItem('koofr_user', koofrUser);
+    localStorage.setItem('koofr_pass', koofrPass);
+
+    // Test the connection
+    const result = await testWebdavConnection(koofrUrl, koofrUser, koofrPass);
+    
+    setIsTesting(false);
+    if (result.success) {
+      alert("Success! Connected to Koofr.");
+    } else {
+      alert("Connection failed. Check your App Password and email.\nError: " + result.message);
+    }
+  };
+
   return (
     <div className="p-6 pb-32 max-w-5xl mx-auto w-full flex flex-col gap-10">
       <header className="flex flex-col gap-1">
@@ -85,6 +118,8 @@ export function SettingsView() {
                     <div className="relative">
                       <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" />
                       <Input 
+                        value={koofrUrl}
+                        onChange={(e) => setKoofrUrl(e.target.value)}
                         placeholder="https://app.koofr.net/dav/Koofr" 
                         className="bg-[#2a2a2a] border-none pl-10 focus-visible:ring-1 focus-visible:ring-primary"
                       />
@@ -95,6 +130,8 @@ export function SettingsView() {
                     <div className="relative">
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" />
                       <Input 
+                        value={koofrUser}
+                        onChange={(e) => setKoofrUser(e.target.value)}
                         placeholder="email@example.com" 
                         className="bg-[#2a2a2a] border-none pl-10 focus-visible:ring-1 focus-visible:ring-primary"
                       />
@@ -106,14 +143,20 @@ export function SettingsView() {
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-600" />
                       <Input 
                         type="password" 
+                        value={koofrPass}
+                        onChange={(e) => setKoofrPass(e.target.value)}
                         placeholder="••••••••••••" 
                         className="bg-[#2a2a2a] border-none pl-10 focus-visible:ring-1 focus-visible:ring-primary"
                       />
                     </div>
                   </div>
-                  <Button className="w-full bg-primary hover:bg-primary/90 text-white font-bold mt-2 gap-2">
+                  <Button 
+                    onClick={handleConnectKoofr} 
+                    disabled={isTesting}
+                    className="w-full bg-primary hover:bg-primary/90 text-white font-bold mt-2 gap-2"
+                  >
                     <Link2 className="w-4 h-4" />
-                    Connect Koofr
+                    {isTesting ? 'Testing...' : 'Connect Koofr'}
                   </Button>
                 </CardContent>
               </Card>

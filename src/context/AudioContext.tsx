@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 
-interface Book {
+export interface Book {
   id: string;
   title: string;
   author: string;
@@ -9,6 +9,7 @@ interface Book {
   status: string;
   genre: string;
   dateAdded: string;
+  audioUrl?: string; // Added to hold the direct stream URL from Koofr/WebDAV
 }
 
 interface AudioContextType {
@@ -87,9 +88,8 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     if (currentBook?.id !== book.id) {
       setCurrentBook(book);
-      // In a real app, this would be book.audioUrl
-      // Using a sample audio file for demonstration
-      audioRef.current.src = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+      // It will use your cloud stream if provided, otherwise default to the demo track
+      audioRef.current.src = book.audioUrl || 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
       audioRef.current.play();
       setIsPlaying(true);
     } else {
