@@ -7,7 +7,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAudio } from '@/src/context/AudioContext';
-import { fetchCloudLibrary } from '@/src/lib/webdav'; // Import the Koofr scanner we built
+import { fetchCloudLibrary } from '../../lib/webdav'; // Import the Koofr scanner we built
 
 export function HomeView() {
   const { currentBook, isPlaying, togglePlay, playBook, currentTime, duration } = useAudio();
