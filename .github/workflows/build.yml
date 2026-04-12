@@ -19,7 +19,7 @@ jobs:
         node-version: '20'
 
     - name: Install Web Dependencies
-      run: npm install
+      run: npm install && npm install webdav
 
     - name: Build Web App
       run: npm run build
