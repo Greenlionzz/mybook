@@ -24,6 +24,12 @@ jobs:
     - name: Build Web App
       run: npm run build
 
+    - name: Setup Java JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '21'
+
     - name: Setup Capacitor and Android Platform
       run: |
         npm install @capacitor/core @capacitor/cli @capacitor/android
@@ -36,11 +42,16 @@ jobs:
         npx cap add android
         npx cap sync android
 
-    - name: Setup Java JDK
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'zulu'
-        java-version: '21'
+    - name: Fix Kotlin Duplicate Classes
+      run: |
+        cat <<EOF >> android/build.gradle
+        allprojects {
+            configurations.all {
+                exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk7'
+                exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk8'
+            }
+        }
+        EOF
 
     - name: Make Gradle executable
       run: chmod +x ./android/gradlew
