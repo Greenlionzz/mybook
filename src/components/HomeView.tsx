@@ -2,41 +2,39 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { 
   Play, Pause, Flame, Clock, ChevronRight, Plus, 
-  History, TrendingUp, BookOpen, RefreshCw, Cloud
+  History, TrendingUp, BookOpen, RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAudio } from '@/src/context/AudioContext';
-import { fetchCloudLibrary } from '../../lib/webdav'; // Import the Koofr scanner we built
+import { fetchCloudLibrary } from '../../lib/webdav';
 
 export function HomeView() {
   const { currentBook, isPlaying, togglePlay, playBook, currentTime, duration } = useAudio();
   
-  // Real State for your library
   const [cloudBooks, setCloudBooks] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch from Koofr when the page opens
   useEffect(() => {
     loadLibrary();
   }, []);
 
   const loadLibrary = async () => {
     setIsLoading(true);
-    const files = await fetchCloudLibrary(); // Scans your root Koofr folder
+    // Explicitly scan the Audiobooks folder!
+    const files = await fetchCloudLibrary('/Audiobooks'); 
     setCloudBooks(files);
     setIsLoading(false);
   };
 
-  // Safe fallback arrays while loading or if the folder is empty
+  // Grab the first 8 for "Recently Added" and the next few for "Up Next"
   const recentlyAdded = cloudBooks.length > 0 ? cloudBooks.slice(0, 8) : [];
-  const upNext = cloudBooks.length > 8 ? cloudBooks.slice(8, 11) : [];
+  const upNext = cloudBooks.length > 8 ? cloudBooks.slice(8, 14) : [];
   
-  // Use currentBook if playing, or the first cloud book, or fall back to a placeholder
   const heroBook = currentBook || cloudBooks[0] || {
     id: 'placeholder',
-    title: 'Your Cloud Library',
-    author: isLoading ? 'Loading...' : 'No audiobooks found in root folder.',
+    title: 'Ready to Listen',
+    author: isLoading ? 'Scanning Koofr /Audiobooks...' : 'No books found in /Audiobooks.',
     cover: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=800'
   };
 
@@ -50,23 +48,15 @@ export function HomeView() {
 
   return (
     <div className="p-6 pb-32 max-w-7xl mx-auto w-full flex flex-col gap-10">
-      {/* Top action bar to manually refresh library */}
       <div className="flex justify-end">
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={loadLibrary}
-          disabled={isLoading}
-          className="border-white/10 text-neutral-400 hover:text-white"
-        >
+        <Button variant="outline" size="sm" onClick={loadLibrary} disabled={isLoading} className="border-white/10 text-neutral-400 hover:text-white">
           <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-          {isLoading ? 'Scanning Koofr...' : 'Refresh Library'}
+          {isLoading ? 'Scanning...' : 'Refresh Library'}
         </Button>
       </div>
 
       {/* Hero & Daily Goal Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Continue Listening Hero */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="lg:col-span-2">
           <Card className="bg-[#1f1f1f] border-white/5 overflow-hidden relative group h-full">
             <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -98,10 +88,7 @@ export function HomeView() {
                         <span>{Math.round(progress)}% Complete</span>
                       </div>
                       <div className="h-2 bg-neutral-800 rounded-full overflow-hidden">
-                        <motion.div 
-                          className="h-full bg-primary shadow-[0_0_10px_rgba(34,197,94,0.5)]"
-                          style={{ width: `${progress}%` }}
-                        />
+                        <motion.div className="h-full bg-primary shadow-[0_0_10px_rgba(34,197,94,0.5)]" style={{ width: `${progress}%` }} />
                       </div>
                     </div>
 
@@ -116,14 +103,10 @@ export function HomeView() {
                       }}
                     >
                       <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center group-hover/btn:scale-110 transition-transform">
-                        {currentBook?.id === heroBook.id && isPlaying ? (
-                          <Pause className="w-4 h-4 fill-current" />
-                        ) : (
-                          <Play className="w-4 h-4 fill-current ml-0.5" />
-                        )}
+                        {currentBook?.id === heroBook.id && isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
                       </div>
                       <span className="text-lg">
-                        {currentBook?.id === heroBook.id && isPlaying ? 'Pause Playback' : 'Stream from Cloud'}
+                        {currentBook?.id === heroBook.id && isPlaying ? 'Pause Playback' : 'Resume Playback'}
                       </span>
                     </Button>
                   </>
@@ -165,25 +148,23 @@ export function HomeView() {
         </motion.div>
       </div>
 
-      {/* Cloud Audiobooks Row */}
+      {/* Recently Added Row */}
       {recentlyAdded.length > 0 && (
         <section className="flex flex-col gap-6">
-          <div className="flex items-center gap-2 text-neutral-400">
-            <Cloud className="w-5 h-5 text-primary" />
-            <h3 className="text-lg font-bold uppercase tracking-widest text-sm text-white">Your Cloud Library</h3>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-neutral-400">
+              <Plus className="w-5 h-5" />
+              <h3 className="text-lg font-bold uppercase tracking-widest text-sm">Recently Added</h3>
+            </div>
+            <Button variant="ghost" className="text-xs font-bold text-primary hover:text-primary/80 hover:bg-primary/5">
+              VIEW ALL
+            </Button>
           </div>
 
           <div className="flex gap-6 overflow-x-auto pb-4 custom-scrollbar -mx-2 px-2">
             {recentlyAdded.map((book, i) => (
-              <motion.div 
-                key={book.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.05 }}
-                className="w-32 md:w-40 shrink-0 group cursor-pointer"
-                onClick={() => playBook(book as any)}
-              >
-                <div className="aspect-square rounded-lg overflow-hidden mb-3 shadow-lg border border-white/5 group-hover:border-primary/50 transition-all duration-300 group-hover:-translate-y-1 relative bg-neutral-800 flex items-center justify-center">
+              <motion.div key={book.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05 }} className="w-32 md:w-40 shrink-0 group cursor-pointer" onClick={() => playBook(book as any)}>
+                <div className="aspect-square rounded-lg overflow-hidden mb-3 shadow-lg border border-white/5 group-hover:border-primary/50 transition-all duration-300 group-hover:-translate-y-1 relative bg-neutral-800">
                   <img src={book.cover} alt={book.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shadow-lg">
@@ -191,10 +172,43 @@ export function HomeView() {
                     </div>
                   </div>
                 </div>
-                <h4 className="text-sm font-bold text-neutral-200 line-clamp-1 group-hover:text-primary transition-colors">
-                  {book.title}
-                </h4>
+                <h4 className="text-sm font-bold text-neutral-200 line-clamp-1 group-hover:text-primary transition-colors">{book.title}</h4>
                 <p className="text-xs text-neutral-500 truncate">{book.author}</p>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Up Next Section */}
+      {upNext.length > 0 && (
+        <section className="flex flex-col gap-6">
+          <div className="flex items-center gap-2 text-neutral-400">
+            <TrendingUp className="w-5 h-5" />
+            <h3 className="text-lg font-bold uppercase tracking-widest text-sm">Up Next</h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {upNext.map((book, i) => (
+              <motion.div key={book.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }} onClick={() => playBook(book as any)}>
+                <Card className="bg-[#1f1f1f] border-white/5 hover:bg-[#252525] transition-colors cursor-pointer group p-3">
+                  <div className="flex gap-4 items-center">
+                    <div className="w-12 h-12 rounded overflow-hidden shrink-0 border border-white/5 bg-neutral-800">
+                      <img src={book.cover} alt={book.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-neutral-100 truncate group-hover:text-primary transition-colors">{book.title}</h4>
+                      <p className="text-xs text-neutral-500 truncate">{book.author}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <BookOpen className="w-3 h-3 text-neutral-600" />
+                        <span className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest">Queued</span>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="icon" className="text-neutral-600 group-hover:text-primary" onClick={(e) => { e.stopPropagation(); playBook(book as any); }}>
+                      {currentBook?.id === book.id && isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
+                    </Button>
+                  </div>
+                </Card>
               </motion.div>
             ))}
           </div>
