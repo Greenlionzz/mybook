@@ -45,7 +45,6 @@ export function CollectionsView() {
     }
   };
 
-  // NEW: Handle editing tags
   const handleEditMetadata = (book: any) => {
     const newTitle = prompt("Edit Book Title:", book.title) || book.title;
     
@@ -60,7 +59,7 @@ export function CollectionsView() {
     if (selectedBook?.id === book.id) {
       setSelectedBook({ ...selectedBook, title: newTitle, author: newAuthor, series: newSeries });
     }
-    loadLibrary(true); // Refresh library to show new tags
+    loadLibrary(true); 
   };
 
   const handlePlayPart = (book: any, url: string, index: number) => {
@@ -170,19 +169,8 @@ export function CollectionsView() {
 
                   {/* Right Column: Details & Tracklist */}
                   <div className="flex-1 flex flex-col gap-8">
-                    <div className="flex flex-col gap-4 text-center md:text-left relative group">
-                      
-                      {/* EDIT BUTTON */}
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="absolute -right-2 -top-2 md:-right-12 md:top-0 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity text-neutral-400 hover:text-white hover:bg-white/10"
-                        onClick={() => handleEditMetadata(selectedBook)}
-                      >
-                        <Pencil className="w-5 h-5" />
-                      </Button>
-
-                      <h1 className="text-3xl md:text-5xl font-black text-white leading-tight pr-8 md:pr-0">
+                    <div className="flex flex-col gap-4 text-center md:text-left relative">
+                      <h1 className="text-3xl md:text-5xl font-black text-white leading-tight">
                         {selectedBook.title}
                       </h1>
                       
@@ -207,16 +195,28 @@ export function CollectionsView() {
                       </div>
                     </div>
 
-                    <Button 
-                      className="w-full md:w-auto self-center md:self-start bg-primary hover:bg-primary/90 text-white font-bold px-10 py-6 rounded-full text-lg shadow-[0_0_20px_rgba(34,197,94,0.3)] gap-3"
-                      onClick={() => {
-                        const urlToPlay = selectedBook.audioParts ? selectedBook.audioParts[0] : selectedBook.audioUrl;
-                        handlePlayPart(selectedBook, urlToPlay, 0);
-                      }}
-                    >
-                      <Play className="w-6 h-6 fill-current" />
-                      Play Book
-                    </Button>
+                    {/* ALWAYS VISIBLE ACTION BUTTONS */}
+                    <div className="flex flex-col sm:flex-row items-center gap-4 w-full">
+                      <Button 
+                        className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white font-bold px-10 py-6 rounded-full text-lg shadow-[0_0_20px_rgba(34,197,94,0.3)] gap-3"
+                        onClick={() => {
+                          const urlToPlay = selectedBook.audioParts ? selectedBook.audioParts[0] : selectedBook.audioUrl;
+                          handlePlayPart(selectedBook, urlToPlay, 0);
+                        }}
+                      >
+                        <Play className="w-6 h-6 fill-current" />
+                        Play Book
+                      </Button>
+
+                      <Button 
+                        variant="outline"
+                        className="w-full sm:w-auto bg-white/5 hover:bg-white/10 text-white font-bold px-8 py-6 rounded-full text-lg border border-white/10 gap-3"
+                        onClick={() => handleEditMetadata(selectedBook)}
+                      >
+                        <Pencil className="w-5 h-5 text-neutral-400" />
+                        Edit Info
+                      </Button>
+                    </div>
 
                     <hr className="border-white/5" />
 
