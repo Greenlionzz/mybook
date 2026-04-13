@@ -17,7 +17,8 @@
 * **Live Listening Stats:** Real-time tracking of daily goals, streaks, and lifetime listening hours.
 * **Immersive Experience:** Full-screen, edge-to-edge UI designed for tablets and mobile devices.
 * **Privacy First:** All credentials and metadata stay on your device. No third-party tracking.
-
+## Note
+* some buttons, options are just placeholders. i am not a developer, rather i am an mbbs student, i made it with help of gemini on my tablet, i needed an app which can play audiobooks from cloud gdrive and koofr, but i cant find any good app, i cloned audiobookshelf ui, the app name is still audiobookshelf :). Gemini hallucinated, cant change the app name.I cant manage to connect gdrive directly, so i connected gdrive with koofr instead. It needs more improvement, if anyone can help, would be very helpful.
 ---
 
 ## 🚀 Getting Started
@@ -71,8 +72,3 @@ Once the app is running:
 2. Enter your **Koofr Username** and **App Password**.
 3. Enter your **Cloudflare Worker URL** (e.g., `https://your-worker.workers.dev`).
 4. Hit **Refresh Library** on the Home or Collections tab.
-
----
-
-## Note
-* some buttons, options are just placeholders. i am not a developer, rather i am an mbbs student, i made it with help of gemini on my tablet, i needed an app which can play audiobooks from cloud gdrive and koofr, but i cant find any good app, i cloned audiobookshelf ui, the app name is still audiobookshelf :). Gemini hallucinated, cant change the app name.I cant manage to connect gdrive directly, so i connected gdrive with koofr instead. It needs more improvement, if anyone can help, would be very helpful.
