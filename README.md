@@ -61,6 +61,8 @@ async function handleRequest(request) {
   return newResponse
 }
 
+---
+
 # 🛠️ Configuration
 
 Once the app is running:
@@ -70,6 +72,7 @@ Once the app is running:
 3. Enter your **Cloudflare Worker URL** (e.g., `https://your-worker.workers.dev`).
 4. Hit **Refresh Library** on the Home or Collections tab.
 
+---
 
 ## Note
 * some buttons, options are just placeholders. i am not a developer, rather i am an mbbs student, i made it with help of gemini on my tablet, i needed an app which can play audiobooks from cloud gdrive and koofr, but i cant find any good app, i cloned audiobookshelf ui, the app name is still audiobookshelf :). Gemini hallucinated, cant change the app name.I cant manage to connect gdrive directly, so i connected gdrive with koofr instead. It needs more improvement, if anyone can help, would be very helpful.
