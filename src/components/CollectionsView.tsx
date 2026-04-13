@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Book, Play, Pause, Search, X, FolderHeart } from 'lucide-react';
+import { Book, Play, Pause, Search, X, FolderHeart, ImagePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useAudio } from '@/src/context/AudioContext';
-import { fetchCloudLibrary } from '../../lib/webdav';
+import { fetchCloudLibrary, saveCustomCover } from '../../lib/webdav';
 
 export function CollectionsView() {
   const { currentBook, isPlaying, playBook, togglePlay } = useAudio();
@@ -19,12 +19,12 @@ export function CollectionsView() {
 
   // Load from cache instantly when you switch to this tab!
   useEffect(() => {
-    loadLibrary();
+    loadLibrary(false);
   }, []);
 
-  const loadLibrary = async () => {
+  const loadLibrary = async (force: boolean = false) => {
     setIsLoading(true);
-    const files = await fetchCloudLibrary('/Audiobooks', false); // false = use cache!
+    const files = await fetchCloudLibrary('/Audiobooks', force); 
     setCloudBooks(files);
     setIsLoading(false);
   };
@@ -42,6 +42,22 @@ export function CollectionsView() {
     } else {
       // It's a single file. Play it immediately.
       playBook(book);
+    }
+  };
+
+  // Handle updating the cover image
+  const handleUpdateCover = (book: any) => {
+    const newUrl = prompt("Enter the URL of the new cover image:");
+    if (newUrl) {
+      saveCustomCover(book.id, newUrl); // Saves to device memory
+      
+      // Update the modal instantly if it's currently open
+      if (selectedFolder?.id === book.id) {
+        setSelectedFolder({ ...selectedFolder, cover: newUrl });
+      }
+      
+      // Force refresh the library to show the new cover on the grid
+      loadLibrary(true); 
     }
   };
 
@@ -77,7 +93,7 @@ export function CollectionsView() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ delay: Math.min(index * 0.05, 0.5) }} // Cap delay so large libraries load fast
+              transition={{ delay: Math.min(index * 0.05, 0.5) }} 
               className="group cursor-pointer"
               onClick={() => handleBookClick(book)}
             >
@@ -89,9 +105,20 @@ export function CollectionsView() {
                   referrerPolicy="no-referrer"
                 />
                 
-                {/* Folder Icon Badge if it has multiple parts */}
+                {/* Change Cover Button (Top Left) */}
+                <div 
+                  className="absolute top-2 left-2 w-8 h-8 rounded-lg bg-black/60 backdrop-blur-md flex items-center justify-center border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/80 z-20"
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent playing the book when clicking the edit button
+                    handleUpdateCover(book);
+                  }}
+                >
+                  <ImagePlus className="w-4 h-4 text-white" />
+                </div>
+
+                {/* Folder Icon Badge if it has multiple parts (Top Right) */}
                 {book.audioParts && book.audioParts.length > 1 && (
-                  <div className="absolute top-2 right-2 w-8 h-8 rounded-lg bg-black/60 backdrop-blur-md flex items-center justify-center border border-white/10">
+                  <div className="absolute top-2 right-2 w-8 h-8 rounded-lg bg-black/60 backdrop-blur-md flex items-center justify-center border border-white/10 z-10">
                     <FolderHeart className="w-4 h-4 text-primary" />
                   </div>
                 )}
@@ -125,12 +152,22 @@ export function CollectionsView() {
               initial={{ opacity: 0, y: 100 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 100 }}
-              onClick={(e) => e.stopPropagation()} // Stop clicks from closing modal
+              onClick={(e) => e.stopPropagation()} 
               className="bg-[#1f1f1f] border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[80vh] shadow-2xl"
             >
               {/* Modal Header */}
               <div className="p-6 flex gap-4 items-center border-b border-white/5 bg-neutral-900/50">
-                <img src={selectedFolder.cover} className="w-16 h-16 rounded-lg object-cover shadow-md" />
+                {/* Clickable Cover Image to Update */}
+                <div 
+                  className="relative w-16 h-16 shrink-0 group/cover cursor-pointer"
+                  onClick={() => handleUpdateCover(selectedFolder)}
+                >
+                  <img src={selectedFolder.cover} className="w-full h-full rounded-lg object-cover shadow-md" />
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/cover:opacity-100 flex items-center justify-center rounded-lg transition-opacity">
+                    <ImagePlus className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+
                 <div className="flex-1 min-w-0">
                   <h3 className="font-bold text-lg text-white line-clamp-1">{selectedFolder.title}</h3>
                   <p className="text-sm text-neutral-400 font-medium tracking-wide">
@@ -145,7 +182,6 @@ export function CollectionsView() {
               {/* Scrollable Tracklist */}
               <div className="overflow-y-auto p-3 custom-scrollbar flex-1">
                 {selectedFolder.audioParts?.map((url: string, i: number) => {
-                  // We dynamically create a unique ID for each part so the player knows which one is playing
                   const uniquePartId = `${selectedFolder.id}-part-${i}`;
                   const isThisPartPlaying = currentBook?.id === uniquePartId && isPlaying;
 
@@ -156,7 +192,6 @@ export function CollectionsView() {
                         ${currentBook?.id === uniquePartId ? 'bg-primary/10 border border-primary/20' : 'hover:bg-white/5 border border-transparent'}
                       `}
                       onClick={() => {
-                        // Create a temporary "Book" specifically for this track
                         const partBook = {
                           ...selectedFolder,
                           id: uniquePartId, 
@@ -165,9 +200,9 @@ export function CollectionsView() {
                         };
                         
                         if (currentBook?.id === uniquePartId) {
-                          togglePlay(); // Pause if already playing
+                          togglePlay();
                         } else {
-                          playBook(partBook); // Play new track
+                          playBook(partBook);
                         }
                       }}
                     >
