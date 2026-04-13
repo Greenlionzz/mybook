@@ -1,13 +1,15 @@
 import { CapacitorHttp } from '@capacitor/core';
 
-// ---> PASTE YOUR CLOUDFLARE WORKER URL HERE <---
-const PROXY_BASE_URL = 'https://odd-dawn-a77d.bagpallab48.workers.dev';
-
+/**
+ * Gets the current configuration from localStorage.
+ * This now includes the proxy URL so users can set their own.
+ */
 export const getKoofrCredentials = () => {
   return {
     url: localStorage.getItem('koofr_url') || 'https://app.koofr.net/dav/Koofr',
     user: localStorage.getItem('koofr_user') || '',
-    pass: localStorage.getItem('koofr_pass') || ''
+    pass: localStorage.getItem('koofr_pass') || '',
+    proxy: localStorage.getItem('koofr_proxy') || '' // Dynamically pulled from settings
   };
 };
 
@@ -18,7 +20,9 @@ export const saveCustomCover = (bookId: string, coverUrl: string) => {
   localStorage.removeItem(`koofr_library_cache`); 
 };
 
-// NEW: Saves custom Title, Author, and Series to local storage
+/**
+ * Saves custom Title, Author, and Series to local storage.
+ */
 export const saveBookMetadata = (bookId: string, title: string, author: string, series: string) => {
   const meta = JSON.parse(localStorage.getItem('custom_meta') || '{}');
   meta[bookId] = { title, author, series };
@@ -26,15 +30,23 @@ export const saveBookMetadata = (bookId: string, title: string, author: string, 
   localStorage.removeItem(`koofr_library_cache`); 
 };
 
+/**
+ * Generates the streaming URL using the user-defined proxy.
+ */
 export const getDirectStreamUrl = (fullWebdavPath: string) => {
-  const { user, pass } = getKoofrCredentials();
-  if (!user || !pass) return null;
+  const { user, pass, proxy } = getKoofrCredentials();
   
+  // If no proxy is set, the app won't be able to bypass CORS
+  if (!user || !pass || !proxy) return null;
+    
   const authToken = btoa(user + ':' + pass);
   const path = fullWebdavPath.startsWith('/') ? fullWebdavPath : `/${fullWebdavPath}`;
   const encodedFilePath = path.split('/').map(p => encodeURIComponent(p)).join('/');
+    
+  // Clean up proxy URL to ensure it doesn't end with a trailing slash
+  const cleanProxy = proxy.endsWith('/') ? proxy.slice(0, -1) : proxy;
   
-  return `${PROXY_BASE_URL}${encodedFilePath}?auth=${authToken}`;
+  return `${cleanProxy}${encodedFilePath}?auth=${authToken}`;
 };
 
 export const testWebdavConnection = async (url: string, user: string, pass: string) => {
@@ -54,7 +66,7 @@ export const testWebdavConnection = async (url: string, user: string, pass: stri
 
 export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
   const CACHE_KEY = `koofr_library_cache`;
-
+  
   if (!forceRefresh) {
     const cachedData = localStorage.getItem(CACHE_KEY);
     if (cachedData) {
@@ -67,7 +79,6 @@ export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
 
   const auth = btoa(user + ':' + pass);
   const customCovers = JSON.parse(localStorage.getItem('custom_covers') || '{}');
-  // NEW: Grab custom metadata from memory
   const customMeta = JSON.parse(localStorage.getItem('custom_meta') || '{}');
   const defaultCover = "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=800";
 
@@ -87,22 +98,20 @@ export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
       });
 
       if (response.status !== 200) continue; 
-
       const data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-      
-      // Standalone Files
+            
       const standaloneFiles = data.files.filter((item: any) => 
         item.type === 'file' && (item.name.endsWith('.mp3') || item.name.endsWith('.m4a') || item.name.endsWith('.m4b'))
       );
 
       const standaloneBooks = standaloneFiles.map((file: any) => {
         const fullWebdavPath = `${loc.webdavPrefix}${loc.path}/${file.name}`;
-        const meta = customMeta[file.name] || {}; // Pull saved tags
+        const meta = customMeta[file.name] || {}; 
         return {
           id: file.name,
           title: meta.title || file.name.replace(/\.[^/.]+$/, ""),
           author: meta.author || loc.source,
-          series: meta.series || null, // Add series!
+          series: meta.series || null,
           cover: customCovers[file.name] || defaultCover,
           description: "Single audio file.",
           status: "Unread",
@@ -111,16 +120,15 @@ export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
           audioUrl: getDirectStreamUrl(fullWebdavPath)
         };
       });
-      
+            
       allBooks = [...allBooks, ...standaloneBooks];
 
-      // Folders
       const folders = data.files.filter((item: any) => item.type === 'dir');
       const folderBooks = await Promise.all(folders.map(async (folder: any) => {
         const folderPath = `${loc.path}/${folder.name}`;
         const fullWebdavPathPrefix = `${loc.webdavPrefix}${folderPath}`;
-        const meta = customMeta[folder.name] || {}; // Pull saved tags
-        
+        const meta = customMeta[folder.name] || {}; 
+                
         try {
           const folderRes = await CapacitorHttp.get({
             url: `https://app.koofr.net/api/v2/mounts/${loc.mountId}/files/list?path=${encodeURIComponent(folderPath)}`,
@@ -140,7 +148,7 @@ export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
                 id: folder.name,
                 title: meta.title || folder.name,
                 author: meta.author || loc.source,
-                series: meta.series || null, // Add series!
+                series: meta.series || null,
                 cover: customCovers[folder.name] || defaultCover,
                 description: `${audioParts.length} parts found.`,
                 status: "Unread",
@@ -156,7 +164,6 @@ export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
       }));
 
       allBooks = [...allBooks, ...folderBooks.filter(book => book !== null)];
-
     } catch (error) {
       console.error(`Error scanning ${loc.source}:`, error);
     }
