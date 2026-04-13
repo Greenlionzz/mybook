@@ -32,7 +32,7 @@ jobs:
 
     - name: Setup Capacitor and Android Platform
       run: |
-        npm install @capacitor/core @capacitor/cli @capacitor/android
+        npm install
         
         # Creates the Capacitor config if it doesn't exist yet
         if [ ! -f capacitor.config.json ] && [ ! -f capacitor.config.ts ]; then
