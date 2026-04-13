@@ -9,32 +9,24 @@
 ## 📸 Gallery
 
 ### 🏠 Dashboard & Stats
-Track your listening habits with real-time stats, daily goals, and streaks.
-
 <p align="center">
-  <img src="./screenshots/Screenshot_20260413_232950_SIRIN.jpg" width="48%" alt="Home Dashboard" />
-  <img src="./screenshots/Screenshot_20260413_233132_SIRIN.jpg" width="48%" alt="Listening Statistics" />
+  <img src="screenshots/Screenshot_20260413_232950_SIRIN.jpg" width="48%" alt="Home Dashboard" />
+  <img src="screenshots/Screenshot_20260413_233132_SIRIN.jpg" width="48%" alt="Listening Statistics" />
 </p>
 
 ### 📚 Library & Organization
-Browse your cloud library, manage series collections with stacked covers, and edit metadata on the fly.
-
 <p align="center">
-  <img src="./screenshots/Screenshot_20260413_233004_SIRIN.jpg" width="32%" alt="Library View" />
-  <img src="./screenshots/Screenshot_20260413_233102_SIRIN.jpg" width="32%" alt="Series View" />
-  <img src="./screenshots/Screenshot_20260413_233111_SIRIN.jpg" width="32%" alt="Authors View" />
+  <img src="screenshots/Screenshot_20260413_233004_SIRIN.jpg" width="32%" alt="Library View" />
+  <img src="screenshots/Screenshot_20260413_233102_SIRIN.jpg" width="32%" alt="Series View" />
+  <img src="screenshots/Screenshot_20260413_233111_SIRIN.jpg" width="32%" alt="Authors View" />
 </p>
 
 ### 🎧 Player Experience
-A clean, immersive, edge-to-edge player UI optimized for focus.
-
 <p align="center">
-  <img src="./screenshots/Screenshot_20260413_233052_SIRIN.jpg" width="32%" alt="Book Details" />
-  <img src="./screenshots/Screenshot_20260413_233122_SIRIN.jpg" width="32%" alt="Full Player UI" />
-  <img src="./screenshots/Screenshot_20260413_234557_SIRIN.jpg" width="32%" alt="Player Controls" />
+  <img src="screenshots/Screenshot_20260413_233052_SIRIN.jpg" width="32%" alt="Book Details" />
+  <img src="screenshots/Screenshot_20260413_233122_SIRIN.jpg" width="32%" alt="Full Player UI" />
+  <img src="screenshots/Screenshot_20260413_234557_SIRIN.jpg" width="32%" alt="Player Controls" />
 </p>
-
----
 
 ---
 
