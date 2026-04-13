@@ -47,7 +47,21 @@ export const testWebdavConnection = async (url: string, user: string, pass: stri
   }
 };
 
-// NEW: Multi-Folder Deep Scanner
+// Generates the Proxy URL with the auth token safely in the query string
+export const getDirectStreamUrl = (fullWebdavPath: string) => {
+  const { user, pass } = getKoofrCredentials();
+  if (!user || !pass) return null;
+  
+  const authToken = btoa(user + ':' + pass);
+  const path = fullWebdavPath.startsWith('/') ? fullWebdavPath : `/${fullWebdavPath}`;
+  
+  // URL Encode the path so spaces in "Google Drive" don't break it
+  const encodedFilePath = path.split('/').map(p => encodeURIComponent(p)).join('/');
+  
+  return `${PROXY_BASE_URL}${encodedFilePath}?auth=${authToken}`;
+};
+
+// NEW: Multi-Mount Deep Scanner
 export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
   const CACHE_KEY = `koofr_library_cache`;
 
@@ -67,38 +81,41 @@ export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
 
   let allBooks: any[] = [];
 
-  // We define the paths we want to scan here!
-  const pathsToScan = ['/Audiobooks', '/Google Drive/Audiobook'];
+  // We explicitly define your mounts here using the ID from your screenshot!
+  const locationsToScan = [
+    { mountId: 'primary', path: '/Audiobooks', webdavPrefix: '/Koofr', source: 'Koofr' },
+    { mountId: 'cbca00de-d02a-434b-8dae-23f2c2ac66fc', path: '/Audiobook', webdavPrefix: '/Google Drive', source: 'Google Drive' }
+  ];
 
-  for (const scanPath of pathsToScan) {
+  for (const loc of locationsToScan) {
     try {
       const response = await CapacitorHttp.get({
-        url: `https://app.koofr.net/api/v2/mounts/primary/files/list?path=${encodeURIComponent(scanPath)}`,
+        url: `https://app.koofr.net/api/v2/mounts/${loc.mountId}/files/list?path=${encodeURIComponent(loc.path)}`,
         headers: { 'Authorization': `Basic ${auth}`, 'Accept': 'application/json' },
         responseType: 'text'
       });
 
-      if (response.status !== 200) continue; // Skip if folder doesn't exist
+      if (response.status !== 200) continue; // Skip if folder doesn't exist yet
 
       const data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
       
-      // Standalone Files in this folder
+      // Standalone Files
       const standaloneFiles = data.files.filter((item: any) => 
         item.type === 'file' && (item.name.endsWith('.mp3') || item.name.endsWith('.m4a') || item.name.endsWith('.m4b'))
       );
 
       const standaloneBooks = standaloneFiles.map((file: any) => {
-        const fullPath = `${scanPath}/${file.name}`;
+        const fullWebdavPath = `${loc.webdavPrefix}${loc.path}/${file.name}`;
         return {
           id: file.name,
           title: file.name.replace(/\.[^/.]+$/, ""),
-          author: scanPath.includes('Google Drive') ? "Google Drive" : "Koofr",
+          author: loc.source, // Tags the book as Koofr or Google Drive!
           cover: customCovers[file.name] || defaultCover,
           description: "Single audio file.",
           status: "Unread",
           genre: "Cloud Audio",
           dateAdded: new Date().toISOString(),
-          audioUrl: getDirectStreamUrl(fullPath)
+          audioUrl: getDirectStreamUrl(fullWebdavPath)
         };
       });
       
@@ -107,10 +124,12 @@ export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
       // Folders (Deep Scan)
       const folders = data.files.filter((item: any) => item.type === 'dir');
       const folderBooks = await Promise.all(folders.map(async (folder: any) => {
-        const folderPath = `${scanPath}/${folder.name}`;
+        const folderPath = `${loc.path}/${folder.name}`;
+        const fullWebdavPathPrefix = `${loc.webdavPrefix}${folderPath}`;
+        
         try {
           const folderRes = await CapacitorHttp.get({
-            url: `https://app.koofr.net/api/v2/mounts/primary/files/list?path=${encodeURIComponent(folderPath)}`,
+            url: `https://app.koofr.net/api/v2/mounts/${loc.mountId}/files/list?path=${encodeURIComponent(folderPath)}`,
             headers: { 'Authorization': `Basic ${auth}`, 'Accept': 'application/json' },
             responseType: 'text'
           });
@@ -122,18 +141,18 @@ export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
             ).sort((a: any, b: any) => a.name.localeCompare(b.name));
 
             if (audioParts.length > 0) {
-              const firstPartPath = `${folderPath}/${audioParts[0].name}`;
+              const firstPartPath = `${fullWebdavPathPrefix}/${audioParts[0].name}`;
               return {
                 id: folder.name,
                 title: folder.name,
-                author: scanPath.includes('Google Drive') ? "Google Drive" : "Koofr",
+                author: loc.source,
                 cover: customCovers[folder.name] || defaultCover,
                 description: `${audioParts.length} parts found.`,
                 status: "Unread",
                 genre: "Cloud Audio",
                 dateAdded: new Date().toISOString(),
                 audioUrl: getDirectStreamUrl(firstPartPath),
-                audioParts: audioParts.map((part: any) => getDirectStreamUrl(`${folderPath}/${part.name}`))
+                audioParts: audioParts.map((part: any) => getDirectStreamUrl(`${fullWebdavPathPrefix}/${part.name}`))
               };
             }
           }
@@ -144,10 +163,11 @@ export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
       allBooks = [...allBooks, ...folderBooks.filter(book => book !== null)];
 
     } catch (error) {
-      console.error(`Error scanning ${scanPath}:`, error);
+      console.error(`Error scanning ${loc.source}:`, error);
     }
-  } // End of loop
+  }
 
   localStorage.setItem(CACHE_KEY, JSON.stringify(allBooks));
   return allBooks;
 };
+
