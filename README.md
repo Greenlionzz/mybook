@@ -22,6 +22,17 @@
 
 ## 🚀 Getting Started
 
+## 📸 Screenshots
+
+<p align="center">
+  <img src="![Image](https://github.com/user-attachments/assets/f9c36eee-4971-4c7a-8af8-860dea186b44)" width="30%" alt="Home Screen" />
+  <img src="![Image](https://github.com/user-attachments/assets/37a2934b-b5a0-493c-a6f5-8c3bfdca9040)" width="30%" alt="Library View" />
+  <img src="![Image](https://github.com/user-attachments/assets/7651d70a-7019-48c2-9977-bd4b36f47cc3)" width="30%" alt="Player UI" />
+  <img src="![Image](https://github.com/user-attachments/assets/c3478db2-0c2c-457e-bd07-2fbf91ffb44f)" width="30%" alt="Series UI" />
+</p>
+
+---
+
 ### 1. The CORS Proxy (Required)
 To stream audio directly from Koofr to a web/mobile app, you need a proxy to bypass CORS restrictions. The easiest way is using a free **Cloudflare Worker**.
 
@@ -67,3 +78,7 @@ Once the app is running:
 2. Enter your **Koofr Username** and **App Password**.
 3. Enter your **Cloudflare Worker URL** (e.g., `https://your-worker.workers.dev`).
 4. Hit **Refresh Library** on the Home or Collections tab.
+
+
+## Note
+* some buttons, options are just placeholders. i am not a developer, rather i am an mbbs student, i made it with help of gemini on my tablet, i needed an app which can play audiobooks from cloud gdrive and koofr, but i cant find any good app, i cloned audiobookshelf ui, the app name is still audiobookshelf :). Gemini hallucinated, cant change the app name.I cant manage to connect gdrive directly, so i connected gdrive with koofr instead. It needs more improvement, if anyone can help, would be very helpful.
