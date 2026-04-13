@@ -8,25 +8,7 @@
 
 ## 📸 Gallery
 
-### 🏠 Dashboard & Stats
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Greenlionzz/mybook/main/screenshots/Screenshot_20260413_232950_SIRIN.jpg" width="48%" alt="Home Dashboard" />
-  <img src="https://raw.githubusercontent.com/Greenlionzz/mybook/main/screenshots/Screenshot_20260413_233132_SIRIN.jpg" width="48%" alt="Listening Statistics" />
-</p>
-
-### 📚 Library & Organization
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Greenlionzz/mybook/main/screenshots/Screenshot_20260413_233004_SIRIN.jpg" width="32%" alt="Library View" />
-  <img src="https://raw.githubusercontent.com/Greenlionzz/mybook/main/screenshots/Screenshot_20260413_233102_SIRIN.jpg" width="32%" alt="Series View" />
-  <img src="https://raw.githubusercontent.com/Greenlionzz/mybook/main/screenshots/Screenshot_20260413_233111_SIRIN.jpg" width="32%" alt="Authors View" />
-</p>
-
-### 🎧 Player Experience
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Greenlionzz/mybook/main/screenshots/Screenshot_20260413_233052_SIRIN.jpg" width="32%" alt="Book Details" />
-  <img src="https://raw.githubusercontent.com/Greenlionzz/mybook/main/screenshots/Screenshot_20260413_233122_SIRIN.jpg" width="32%" alt="Full Player UI" />
-  <img src="screenshots/Screenshot_20260413_234557_SIRIN.jpg" width="32%" alt="Player Controls" />
-</p>
+* look at screenshots folder, i cant manage to bring them here.
 
 ---
 
