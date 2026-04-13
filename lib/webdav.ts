@@ -1,5 +1,8 @@
 import { CapacitorHttp } from '@capacitor/core';
 
+// ---> PASTE YOUR CLOUDFLARE WORKER URL HERE <---
+const PROXY_BASE_URL = 'https://odd-dawn-a77d.bagpallab48.workers.dev';
+
 export const getKoofrCredentials = () => {
   return {
     url: localStorage.getItem('koofr_url') || 'https://app.koofr.net/dav/Koofr',
@@ -8,23 +11,25 @@ export const getKoofrCredentials = () => {
   };
 };
 
-export const getDirectStreamUrl = (filePath: string) => {
-  const { url, user, pass } = getKoofrCredentials();
-  if (!user || !pass) return null;
-  const urlParts = url.split('//');
-  const encodedUser = encodeURIComponent(user);
-  const encodedPass = encodeURIComponent(pass);
-  const path = filePath.startsWith('/') ? filePath : `/${filePath}`;
-  const encodedFilePath = path.split('/').map(p => encodeURIComponent(p)).join('/');
-  return `${urlParts[0]}//${encodedUser}:${encodedPass}@${urlParts[1]}${encodedFilePath}`;
-};
-
-// NEW: Save a custom cover URL to the device memory and wipe the old cache
 export const saveCustomCover = (bookId: string, coverUrl: string) => {
   const covers = JSON.parse(localStorage.getItem('custom_covers') || '{}');
   covers[bookId] = coverUrl;
   localStorage.setItem('custom_covers', JSON.stringify(covers));
-  localStorage.removeItem(`koofr_library_cache_/Audiobooks`); // Force UI to rebuild
+  localStorage.removeItem(`koofr_library_cache`); 
+};
+
+// NEW: Generates the Proxy URL with the auth token safely in the query string
+export const getDirectStreamUrl = (filePath: string) => {
+  const { user, pass } = getKoofrCredentials();
+  if (!user || !pass) return null;
+  
+  const authToken = btoa(user + ':' + pass);
+  const path = filePath.startsWith('/') ? filePath : `/${filePath}`;
+  
+  // URL Encode the path so spaces in "Google Drive" don't break it
+  const encodedFilePath = path.split('/').map(p => encodeURIComponent(p)).join('/');
+  
+  return `${PROXY_BASE_URL}${encodedFilePath}?auth=${authToken}`;
 };
 
 export const testWebdavConnection = async (url: string, user: string, pass: string) => {
@@ -42,8 +47,9 @@ export const testWebdavConnection = async (url: string, user: string, pass: stri
   }
 };
 
-export const fetchCloudLibrary = async (directoryPath: string = "/", forceRefresh: boolean = false) => {
-  const CACHE_KEY = `koofr_library_cache_${directoryPath}`;
+// NEW: Multi-Folder Deep Scanner
+export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
+  const CACHE_KEY = `koofr_library_cache`;
 
   if (!forceRefresh) {
     const cachedData = localStorage.getItem(CACHE_KEY);
@@ -55,88 +61,93 @@ export const fetchCloudLibrary = async (directoryPath: string = "/", forceRefres
   const { user, pass } = getKoofrCredentials();
   if (!user || !pass) return [];
 
-  // NEW: Load saved custom covers before scanning
+  const auth = btoa(user + ':' + pass);
   const customCovers = JSON.parse(localStorage.getItem('custom_covers') || '{}');
   const defaultCover = "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=800";
 
-  try {
-    const auth = btoa(user + ':' + pass);
-    const safePath = directoryPath.startsWith('/') ? directoryPath : `/${directoryPath}`;
+  let allBooks: any[] = [];
 
-    const response = await CapacitorHttp.get({
-      url: `https://app.koofr.net/api/v2/mounts/primary/files/list?path=${safePath}`,
-      headers: { 'Authorization': `Basic ${auth}`, 'Accept': 'application/json' },
-      responseType: 'text'
-    });
+  // We define the paths we want to scan here!
+  const pathsToScan = ['/Audiobooks', '/Google Drive/Audiobook'];
 
-    if (response.status !== 200) throw new Error(`Status ${response.status}`);
-    const data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-    let allBooks: any[] = [];
+  for (const scanPath of pathsToScan) {
+    try {
+      const response = await CapacitorHttp.get({
+        url: `https://app.koofr.net/api/v2/mounts/primary/files/list?path=${encodeURIComponent(scanPath)}`,
+        headers: { 'Authorization': `Basic ${auth}`, 'Accept': 'application/json' },
+        responseType: 'text'
+      });
 
-    // Standalone Files
-    const standaloneFiles = data.files.filter((item: any) => 
-      item.type === 'file' && (item.name.endsWith('.mp3') || item.name.endsWith('.m4a') || item.name.endsWith('.m4b'))
-    );
+      if (response.status !== 200) continue; // Skip if folder doesn't exist
 
-    const standaloneBooks = standaloneFiles.map((file: any) => {
-      const fullPath = safePath === '/' ? `/${file.name}` : `${safePath}/${file.name}`;
-      return {
-        id: file.name,
-        title: file.name.replace(/\.[^/.]+$/, ""),
-        author: "Cloud Library",
-        cover: customCovers[file.name] || defaultCover, // Apply custom cover here!
-        description: "Single audio file.",
-        status: "Unread",
-        genre: "Cloud Audio",
-        dateAdded: new Date().toISOString(),
-        audioUrl: getDirectStreamUrl(fullPath)
-      };
-    });
-    
-    allBooks = [...standaloneBooks];
+      const data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+      
+      // Standalone Files in this folder
+      const standaloneFiles = data.files.filter((item: any) => 
+        item.type === 'file' && (item.name.endsWith('.mp3') || item.name.endsWith('.m4a') || item.name.endsWith('.m4b'))
+      );
 
-    // Folders
-    const folders = data.files.filter((item: any) => item.type === 'dir');
-    const folderBooks = await Promise.all(folders.map(async (folder: any) => {
-      const folderPath = safePath === '/' ? `/${folder.name}` : `${safePath}/${folder.name}`;
-      try {
-        const folderRes = await CapacitorHttp.get({
-          url: `https://app.koofr.net/api/v2/mounts/primary/files/list?path=${folderPath}`,
-          headers: { 'Authorization': `Basic ${auth}`, 'Accept': 'application/json' },
-          responseType: 'text'
-        });
+      const standaloneBooks = standaloneFiles.map((file: any) => {
+        const fullPath = `${scanPath}/${file.name}`;
+        return {
+          id: file.name,
+          title: file.name.replace(/\.[^/.]+$/, ""),
+          author: scanPath.includes('Google Drive') ? "Google Drive" : "Koofr",
+          cover: customCovers[file.name] || defaultCover,
+          description: "Single audio file.",
+          status: "Unread",
+          genre: "Cloud Audio",
+          dateAdded: new Date().toISOString(),
+          audioUrl: getDirectStreamUrl(fullPath)
+        };
+      });
+      
+      allBooks = [...allBooks, ...standaloneBooks];
 
-        if (folderRes.status === 200) {
-          const folderData = typeof folderRes.data === 'string' ? JSON.parse(folderRes.data) : folderRes.data;
-          const audioParts = folderData.files.filter((item: any) => 
-            item.type === 'file' && (item.name.endsWith('.mp3') || item.name.endsWith('.m4a') || item.name.endsWith('.m4b'))
-          ).sort((a: any, b: any) => a.name.localeCompare(b.name));
+      // Folders (Deep Scan)
+      const folders = data.files.filter((item: any) => item.type === 'dir');
+      const folderBooks = await Promise.all(folders.map(async (folder: any) => {
+        const folderPath = `${scanPath}/${folder.name}`;
+        try {
+          const folderRes = await CapacitorHttp.get({
+            url: `https://app.koofr.net/api/v2/mounts/primary/files/list?path=${encodeURIComponent(folderPath)}`,
+            headers: { 'Authorization': `Basic ${auth}`, 'Accept': 'application/json' },
+            responseType: 'text'
+          });
 
-          if (audioParts.length > 0) {
-            const firstPartPath = `${folderPath}/${audioParts[0].name}`;
-            return {
-              id: folder.name,
-              title: folder.name,
-              author: "Cloud Library",
-              cover: customCovers[folder.name] || defaultCover, // Apply custom cover here!
-              description: `${audioParts.length} parts found.`,
-              status: "Unread",
-              genre: "Cloud Audio",
-              dateAdded: new Date().toISOString(),
-              audioUrl: getDirectStreamUrl(firstPartPath),
-              audioParts: audioParts.map((part: any) => getDirectStreamUrl(`${folderPath}/${part.name}`))
-            };
+          if (folderRes.status === 200) {
+            const folderData = typeof folderRes.data === 'string' ? JSON.parse(folderRes.data) : folderRes.data;
+            const audioParts = folderData.files.filter((item: any) => 
+              item.type === 'file' && (item.name.endsWith('.mp3') || item.name.endsWith('.m4a') || item.name.endsWith('.m4b'))
+            ).sort((a: any, b: any) => a.name.localeCompare(b.name));
+
+            if (audioParts.length > 0) {
+              const firstPartPath = `${folderPath}/${audioParts[0].name}`;
+              return {
+                id: folder.name,
+                title: folder.name,
+                author: scanPath.includes('Google Drive') ? "Google Drive" : "Koofr",
+                cover: customCovers[folder.name] || defaultCover,
+                description: `${audioParts.length} parts found.`,
+                status: "Unread",
+                genre: "Cloud Audio",
+                dateAdded: new Date().toISOString(),
+                audioUrl: getDirectStreamUrl(firstPartPath),
+                audioParts: audioParts.map((part: any) => getDirectStreamUrl(`${folderPath}/${part.name}`))
+              };
+            }
           }
-        }
-      } catch (e) { }
-      return null;
-    }));
+        } catch (e) { }
+        return null;
+      }));
 
-    allBooks = [...allBooks, ...folderBooks.filter(book => book !== null)];
-    localStorage.setItem(CACHE_KEY, JSON.stringify(allBooks));
-    return allBooks;
+      allBooks = [...allBooks, ...folderBooks.filter(book => book !== null)];
 
-  } catch (error) {
-    return [];
-  }
+    } catch (error) {
+      console.error(`Error scanning ${scanPath}:`, error);
+    }
+  } // End of loop
+
+  localStorage.setItem(CACHE_KEY, JSON.stringify(allBooks));
+  return allBooks;
 };
