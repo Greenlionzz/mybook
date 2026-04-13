@@ -12,24 +12,29 @@ import { fetchCloudLibrary } from '../../lib/webdav';
 export function HomeView() {
   const { currentBook, isPlaying, togglePlay, playBook, currentTime, duration } = useAudio();
   
-  const [cloudBooks, setCloudBooks] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // 1. Instantly pull from memory before the screen even draws
+  const [cloudBooks, setCloudBooks] = useState<any[]>(() => {
+    const cached = localStorage.getItem('koofr_library_cache');
+    return cached ? JSON.parse(cached) : [];
+  });
+  
+  // 2. Only show the loading spinner if the cache was completely empty
+  const [isLoading, setIsLoading] = useState(cloudBooks.length === 0);
 
+  // 3. Only run the background scanner if we have zero books
   useEffect(() => {
-    loadLibrary();
+    if (cloudBooks.length === 0) {
+      loadLibrary(false);
+    }
   }, []);
 
-    const loadLibrary = async (force: boolean = false) => {
-    setIsLoading(true);
-    // Notice the 'force' parameter we are passing!
-    const files = await fetchCloudLibrary('/Audiobooks', force); 
+  const loadLibrary = async (force: boolean = false) => {
+    if (force || cloudBooks.length === 0) setIsLoading(true);
+    // Removed the '/Audiobooks' parameter so it uses the multi-drive scanner!
+    const files = await fetchCloudLibrary(force); 
     setCloudBooks(files);
     setIsLoading(false);
   };
-
-  useEffect(() => {
-    loadLibrary(false); // Normal load uses the instant cache
-  }, []);
 
   // Grab the first 8 for "Recently Added" and the next few for "Up Next"
   const recentlyAdded = cloudBooks.length > 0 ? cloudBooks.slice(0, 8) : [];
@@ -38,7 +43,7 @@ export function HomeView() {
   const heroBook = currentBook || cloudBooks[0] || {
     id: 'placeholder',
     title: 'Ready to Listen',
-    author: isLoading ? 'Scanning Koofr /Audiobooks...' : 'No books found in /Audiobooks.',
+    author: isLoading ? 'Scanning Library...' : 'No books found.',
     cover: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=800'
   };
 
