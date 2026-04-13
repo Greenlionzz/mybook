@@ -22,15 +22,6 @@
 
 ## 🚀 Getting Started
 
-## 📸 Screenshots
-
-<p align="center">
-  <img src="![Image](https://github.com/user-attachments/assets/f9c36eee-4971-4c7a-8af8-860dea186b44)" width="30%" alt="Home Screen" />
-  <img src="![Image](https://github.com/user-attachments/assets/37a2934b-b5a0-493c-a6f5-8c3bfdca9040)" width="30%" alt="Library View" />
-  <img src="![Image](https://github.com/user-attachments/assets/7651d70a-7019-48c2-9977-bd4b36f47cc3)" width="30%" alt="Player UI" />
-  <img src="![Image](https://github.com/user-attachments/assets/c3478db2-0c2c-457e-bd07-2fbf91ffb44f)" width="30%" alt="Series UI" />
-</p>
-
 ---
 
 ### 1. The CORS Proxy (Required)
