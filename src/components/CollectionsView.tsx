@@ -8,21 +8,29 @@ import { useAudio } from '@/src/context/AudioContext';
 import { fetchCloudLibrary, saveCustomCover } from '../../lib/webdav';
 
 export function CollectionsView() {
-  const { currentBook, isPlaying, playBook, togglePlay } = useAudio();
+    const { currentBook, isPlaying, playBook, togglePlay } = useAudio();
   
-  const [cloudBooks, setCloudBooks] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // NEW: Instantly load from cache before the page even finishes drawing!
+  const [cloudBooks, setCloudBooks] = useState<any[]>(() => {
+    const cached = localStorage.getItem('koofr_library_cache');
+    return cached ? JSON.parse(cached) : [];
+  });
+  
+  // Only show loading spinner if the cache is completely empty
+  const [isLoading, setIsLoading] = useState(cloudBooks.length === 0);
   const [searchQuery, setSearchQuery] = useState('');
-  
   const [selectedFolder, setSelectedFolder] = useState<any | null>(null);
 
+  // Only run the initial load if we have absolutely no books
   useEffect(() => {
-    loadLibrary(false);
+    if (cloudBooks.length === 0) {
+      loadLibrary(false);
+    }
   }, []);
 
   const loadLibrary = async (force: boolean = false) => {
-    setIsLoading(true);
-    const files = await fetchCloudLibrary('/Audiobooks', force); 
+    if (force || cloudBooks.length === 0) setIsLoading(true);
+    const files = await fetchCloudLibrary(force); 
     setCloudBooks(files);
     setIsLoading(false);
   };
