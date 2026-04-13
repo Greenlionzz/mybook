@@ -12,29 +12,28 @@ import { HomeView } from './components/HomeView';
 import { SearchResultsView } from './components/SearchResultsView';
 import { CollectionsView } from './components/CollectionsView';
 import { LibraryView } from './components/LibraryView'; 
-import { useState, useEffect } from 'react'; // <-- Added useEffect here!
+import { useState, useEffect } from 'react'; 
 import { AnimatePresence } from 'motion/react';
 import { useAudio } from './context/AudioContext';
 
 export default function App() {
-  const { currentBook } = useAudio();
+  // NEW: Grab isPlaying from the context as well!
+  const { currentBook, isPlaying } = useAudio(); 
+  
   const [selectedBook, setSelectedBook] = useState<any | null>(null);
   const [isFullPlayerOpen, setIsFullPlayerOpen] = useState(false);
   const [currentView, setCurrentView] = useState('home');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  
-  // I changed this default to false so it doesn't show an empty player when you first open the app!
   const [isPlayerVisible, setIsPlayerVisible] = useState(false); 
-  
   const [selectedSeries, setSelectedSeries] = useState<any>(null);
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
 
-  // NEW: This automatically brings the mini player back up whenever a book is played!
+  // NEW: Now watches for ANY play action or book change
   useEffect(() => {
     if (currentBook) {
       setIsPlayerVisible(true);
     }
-  }, [currentBook]);
+  }, [currentBook, isPlaying]); // <-- Added isPlaying here so it triggers on play!
 
   const handleViewChange = (view: string) => {
     setCurrentView(view);
@@ -124,7 +123,6 @@ export default function App() {
         book={currentBook as any}
       />
 
-      {/* The mini player visibility is controlled here! */}
       {isPlayerVisible && (
         <PlayerBar 
           onOpenFullPlayer={() => setIsFullPlayerOpen(true)} 
