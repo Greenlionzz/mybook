@@ -14,10 +14,8 @@ export function CollectionsView() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // State for our new Tracklist Modal
   const [selectedFolder, setSelectedFolder] = useState<any | null>(null);
 
-  // Load from cache instantly when you switch to this tab!
   useEffect(() => {
     loadLibrary(false);
   }, []);
@@ -29,34 +27,27 @@ export function CollectionsView() {
     setIsLoading(false);
   };
 
-  // Filter books based on search bar
   const filteredBooks = cloudBooks.filter(book => 
     book.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Handle clicking a book card
   const handleBookClick = (book: any) => {
     if (book.audioParts && book.audioParts.length > 1) {
-      // It's a folder with multiple parts! Open the modal.
       setSelectedFolder(book);
     } else {
-      // It's a single file. Play it immediately.
       playBook(book);
     }
   };
 
-  // Handle updating the cover image
   const handleUpdateCover = (book: any) => {
     const newUrl = prompt("Enter the URL of the new cover image:");
     if (newUrl) {
-      saveCustomCover(book.id, newUrl); // Saves to device memory
+      saveCustomCover(book.id, newUrl);
       
-      // Update the modal instantly if it's currently open
       if (selectedFolder?.id === book.id) {
         setSelectedFolder({ ...selectedFolder, cover: newUrl });
       }
       
-      // Force refresh the library to show the new cover on the grid
       loadLibrary(true); 
     }
   };
@@ -71,7 +62,6 @@ export function CollectionsView() {
           </p>
         </div>
         
-        {/* Search Bar */}
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
           <Input 
@@ -83,7 +73,6 @@ export function CollectionsView() {
         </div>
       </header>
 
-      {/* Main Grid of All Books */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
         <AnimatePresence mode="popLayout">
           {filteredBooks.map((book, index) => (
@@ -94,10 +83,10 @@ export function CollectionsView() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ delay: Math.min(index * 0.05, 0.5) }} 
-              className="group cursor-pointer"
+              className="group cursor-pointer relative"
               onClick={() => handleBookClick(book)}
             >
-              <div className="aspect-square rounded-xl overflow-hidden mb-3 shadow-lg border border-white/5 group-hover:border-primary/50 transition-all duration-300 group-hover:-translate-y-1 relative bg-neutral-800">
+              <div className="aspect-square rounded-xl overflow-hidden mb-3 shadow-lg border border-white/5 relative bg-neutral-800">
                 <img 
                   src={book.cover} 
                   alt={book.title} 
@@ -105,18 +94,18 @@ export function CollectionsView() {
                   referrerPolicy="no-referrer"
                 />
                 
-                {/* Change Cover Button (Top Left) */}
+                {/* ALWAYS VISIBLE Edit Button for Touch Screens */}
                 <div 
-                  className="absolute top-2 left-2 w-8 h-8 rounded-lg bg-black/60 backdrop-blur-md flex items-center justify-center border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/80 z-20"
+                  className="absolute top-2 left-2 w-8 h-8 rounded-lg bg-black/70 backdrop-blur-md flex items-center justify-center border border-white/10 z-20 hover:bg-primary/80"
                   onClick={(e) => {
-                    e.stopPropagation(); // Prevent playing the book when clicking the edit button
+                    e.stopPropagation(); 
                     handleUpdateCover(book);
                   }}
                 >
                   <ImagePlus className="w-4 h-4 text-white" />
                 </div>
 
-                {/* Folder Icon Badge if it has multiple parts (Top Right) */}
+                {/* Folder Icon */}
                 {book.audioParts && book.audioParts.length > 1 && (
                   <div className="absolute top-2 right-2 w-8 h-8 rounded-lg bg-black/60 backdrop-blur-md flex items-center justify-center border border-white/10 z-10">
                     <FolderHeart className="w-4 h-4 text-primary" />
@@ -133,7 +122,7 @@ export function CollectionsView() {
                   </div>
                 </div>
               </div>
-              <h4 className="text-sm font-bold text-neutral-200 line-clamp-2 group-hover:text-primary transition-colors leading-tight">
+              <h4 className="text-sm font-bold text-neutral-200 line-clamp-2 leading-tight">
                 {book.title}
               </h4>
               <p className="text-xs text-neutral-500 mt-1 truncate">
@@ -144,7 +133,6 @@ export function CollectionsView() {
         </AnimatePresence>
       </div>
 
-      {/* Tracklist Modal (Appears when you click a folder) */}
       <AnimatePresence>
         {selectedFolder && (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedFolder(null)}>
@@ -155,16 +143,16 @@ export function CollectionsView() {
               onClick={(e) => e.stopPropagation()} 
               className="bg-[#1f1f1f] border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[80vh] shadow-2xl"
             >
-              {/* Modal Header */}
               <div className="p-6 flex gap-4 items-center border-b border-white/5 bg-neutral-900/50">
-                {/* Clickable Cover Image to Update */}
+                
+                {/* ALWAYS VISIBLE Edit Overlay in Modal */}
                 <div 
-                  className="relative w-16 h-16 shrink-0 group/cover cursor-pointer"
+                  className="relative w-16 h-16 shrink-0 cursor-pointer"
                   onClick={() => handleUpdateCover(selectedFolder)}
                 >
                   <img src={selectedFolder.cover} className="w-full h-full rounded-lg object-cover shadow-md" />
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/cover:opacity-100 flex items-center justify-center rounded-lg transition-opacity">
-                    <ImagePlus className="w-5 h-5 text-white" />
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
+                    <ImagePlus className="w-5 h-5 text-white/90" />
                   </div>
                 </div>
 
@@ -179,7 +167,6 @@ export function CollectionsView() {
                 </Button>
               </div>
 
-              {/* Scrollable Tracklist */}
               <div className="overflow-y-auto p-3 custom-scrollbar flex-1">
                 {selectedFolder.audioParts?.map((url: string, i: number) => {
                   const uniquePartId = `${selectedFolder.id}-part-${i}`;
