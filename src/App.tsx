@@ -34,6 +34,56 @@ export default function App() {
       setIsPlayerVisible(true);
     }
   }, [currentBook, isPlaying]); // <-- Added isPlaying here so it triggers on play!
+  
+    // ... existing code ...
+  // NEW: This automatically brings the mini player back up whenever a book is played!
+  useEffect(() => {
+    if (currentBook) {
+      setIsPlayerVisible(true);
+    }
+  }, [currentBook, isPlaying]);
+
+  // ---> PASTE THIS NEW BLOCK RIGHT HERE <---
+  // NEW: Global Listening Time & Streak Tracker
+  useEffect(() => {
+    let interval: any;
+    if (isPlaying) {
+      interval = setInterval(() => {
+        // Get current date reliably as YYYY-MM-DD
+        const today = new Date().toLocaleDateString('en-CA'); 
+        let stats = JSON.parse(localStorage.getItem('koofr_listening_stats') || 'null');
+
+        // If it's the first time ever playing
+        if (!stats) {
+          stats = { date: today, secondsListened: 0, streak: 1 };
+        }
+
+        // If the date rolled over to a new day
+        if (stats.date !== today) {
+          const lastDate = new Date(stats.date);
+          const currentDate = new Date(today);
+          const diffDays = Math.round((currentDate.getTime() - lastDate.getTime()) / 86400000);
+
+          let newStreak = stats.streak;
+          if (diffDays === 1) {
+             newStreak += 1; // Played consecutive days! Add to streak.
+          } else if (diffDays > 1) {
+             newStreak = 1; // Missed a day. Streak broken.
+          }
+
+          stats.date = today;
+          stats.secondsListened = 0;
+          stats.streak = newStreak;
+        }
+
+        // Add 1 second of listening time
+        stats.secondsListened += 1;
+        localStorage.setItem('koofr_listening_stats', JSON.stringify(stats));
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying]);
+  // -----------------------------------------
 
   const handleViewChange = (view: string) => {
     setCurrentView(view);

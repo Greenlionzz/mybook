@@ -12,16 +12,35 @@ import { fetchCloudLibrary } from '../../lib/webdav';
 export function HomeView() {
   const { currentBook, isPlaying, togglePlay, playBook, currentTime, duration } = useAudio();
   
-  // 1. Instantly pull from memory before the screen even draws
   const [cloudBooks, setCloudBooks] = useState<any[]>(() => {
     const cached = localStorage.getItem('koofr_library_cache');
     return cached ? JSON.parse(cached) : [];
   });
   
-  // 2. Only show the loading spinner if the cache was completely empty
   const [isLoading, setIsLoading] = useState(cloudBooks.length === 0);
 
-  // 3. Only run the background scanner if we have zero books
+  // --- NEW: Live Daily Goal State ---
+  const [listeningStats, setListeningStats] = useState({ seconds: 0, streak: 1 });
+  const DAILY_GOAL_SECONDS = 30 * 60; // 30 minutes
+
+  useEffect(() => {
+    const updateUI = () => {
+      const today = new Date().toLocaleDateString('en-CA');
+      const stats = JSON.parse(localStorage.getItem('koofr_listening_stats') || 'null');
+      
+      if (stats && stats.date === today) {
+        setListeningStats({ seconds: stats.secondsListened, streak: stats.streak });
+      } else if (stats) {
+        setListeningStats({ seconds: 0, streak: stats.streak });
+      }
+    };
+
+    updateUI(); // Run once on mount
+    const interval = setInterval(updateUI, 1000); // Check every second!
+    return () => clearInterval(interval);
+  }, []);
+  // ----------------------------------
+
   useEffect(() => {
     if (cloudBooks.length === 0) {
       loadLibrary(false);
@@ -30,13 +49,11 @@ export function HomeView() {
 
   const loadLibrary = async (force: boolean = false) => {
     if (force || cloudBooks.length === 0) setIsLoading(true);
-    // Removed the '/Audiobooks' parameter so it uses the multi-drive scanner!
     const files = await fetchCloudLibrary(force); 
     setCloudBooks(files);
     setIsLoading(false);
   };
 
-  // Grab the first 8 for "Recently Added" and the next few for "Up Next"
   const recentlyAdded = cloudBooks.length > 0 ? cloudBooks.slice(0, 8) : [];
   const upNext = cloudBooks.length > 8 ? cloudBooks.slice(8, 14) : [];
   
@@ -54,6 +71,12 @@ export function HomeView() {
   };
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  
+  // Calculate dynamic progress circle
+  const progressRatio = Math.min(listeningStats.seconds / DAILY_GOAL_SECONDS, 1);
+  const dashOffset = 364.4 * (1 - progressRatio);
+  const minutesListened = Math.floor(listeningStats.seconds / 60);
+  const isGoalMet = listeningStats.seconds >= DAILY_GOAL_SECONDS;
 
   return (
     <div className="p-6 pb-32 max-w-7xl mx-auto w-full flex flex-col gap-10">
@@ -125,31 +148,46 @@ export function HomeView() {
           </Card>
         </motion.div>
 
-        {/* Daily Goal Widget */}
+        {/* Live Daily Goal Widget */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <Card className="bg-[#1f1f1f] border-white/5 h-full flex flex-col p-6 items-center justify-center text-center gap-6 group">
              <div className="relative w-32 h-32">
               <svg className="w-full h-full transform -rotate-90">
                 <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-neutral-800" />
-                <motion.circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" strokeDasharray={364.4} initial={{ strokeDashoffset: 364.4 }} animate={{ strokeDashoffset: 364.4 * (1 - 15/30) }} transition={{ duration: 1.5, delay: 0.5 }} className="text-primary" strokeLinecap="round" />
+                <motion.circle 
+                  cx="64" cy="64" 
+                  r="58" 
+                  stroke="currentColor" 
+                  strokeWidth="8" 
+                  fill="transparent" 
+                  strokeDasharray={364.4} 
+                  animate={{ strokeDashoffset: dashOffset }} 
+                  transition={{ duration: 0.5, ease: "easeInOut" }} 
+                  className={isGoalMet ? "text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.5)]" : "text-primary"} 
+                  strokeLinecap="round" 
+                />
               </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-2xl font-black text-neutral-100">15</span>
+              <div className="absolute inset-0 flex flex-col items-center justify-center mt-1">
+                <span className="text-3xl font-black text-neutral-100">{minutesListened}</span>
                 <span className="text-[10px] font-bold text-neutral-500 uppercase">/ 30 min</span>
               </div>
             </div>
             <div className="space-y-1">
               <h3 className="font-bold text-neutral-100">Daily Goal</h3>
-              <p className="text-xs text-neutral-500">You're halfway there today!</p>
+              <p className="text-xs text-neutral-500">
+                {isGoalMet ? "Goal reached! You're on fire! 🔥" : "Keep listening to hit your goal!"}
+              </p>
             </div>
             <div className="w-full pt-4 border-t border-white/5 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                  <Flame className="w-4 h-4 text-orange-500" />
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${listeningStats.streak > 1 ? 'bg-orange-500/20 shadow-[0_0_15px_rgba(249,115,22,0.3)]' : 'bg-neutral-800'}`}>
+                  <Flame className={`w-5 h-5 transition-colors ${listeningStats.streak > 1 ? 'text-orange-500 animate-pulse' : 'text-neutral-500'}`} />
                 </div>
                 <div className="text-left">
-                  <p className="text-xs font-bold text-neutral-100">12 Day Streak</p>
-                  <p className="text-[10px] text-neutral-500">Personal Best!</p>
+                  <p className="text-sm font-bold text-neutral-100">{listeningStats.streak} Day Streak</p>
+                  <p className="text-[10px] text-neutral-500 uppercase tracking-widest font-bold">
+                    {listeningStats.streak > 1 ? "Personal Best!" : "Start your streak!"}
+                  </p>
                 </div>
               </div>
             </div>
