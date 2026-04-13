@@ -18,13 +18,13 @@ export const saveCustomCover = (bookId: string, coverUrl: string) => {
   localStorage.removeItem(`koofr_library_cache`); 
 };
 
-// NEW: Generates the Proxy URL with the auth token safely in the query string
-export const getDirectStreamUrl = (filePath: string) => {
+// Generates the Proxy URL with the auth token safely in the query string
+export const getDirectStreamUrl = (fullWebdavPath: string) => {
   const { user, pass } = getKoofrCredentials();
   if (!user || !pass) return null;
   
   const authToken = btoa(user + ':' + pass);
-  const path = filePath.startsWith('/') ? filePath : `/${filePath}`;
+  const path = fullWebdavPath.startsWith('/') ? fullWebdavPath : `/${fullWebdavPath}`;
   
   // URL Encode the path so spaces in "Google Drive" don't break it
   const encodedFilePath = path.split('/').map(p => encodeURIComponent(p)).join('/');
@@ -45,20 +45,6 @@ export const testWebdavConnection = async (url: string, user: string, pass: stri
   } catch (error: any) {
     return { success: false, message: error.message };
   }
-};
-
-// Generates the Proxy URL with the auth token safely in the query string
-export const getDirectStreamUrl = (fullWebdavPath: string) => {
-  const { user, pass } = getKoofrCredentials();
-  if (!user || !pass) return null;
-  
-  const authToken = btoa(user + ':' + pass);
-  const path = fullWebdavPath.startsWith('/') ? fullWebdavPath : `/${fullWebdavPath}`;
-  
-  // URL Encode the path so spaces in "Google Drive" don't break it
-  const encodedFilePath = path.split('/').map(p => encodeURIComponent(p)).join('/');
-  
-  return `${PROXY_BASE_URL}${encodedFilePath}?auth=${authToken}`;
 };
 
 // NEW: Multi-Mount Deep Scanner
@@ -170,4 +156,3 @@ export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
   localStorage.setItem(CACHE_KEY, JSON.stringify(allBooks));
   return allBooks;
 };
-
