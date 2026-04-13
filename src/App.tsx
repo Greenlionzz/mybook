@@ -78,6 +78,11 @@ export default function App() {
 
         // Add 1 second of listening time
         stats.secondsListened += 1;
+        // --- ADD THESE 3 LINES ---
+        stats.totalSecondsListened = (stats.totalSecondsListened || 0) + 1; // Lifetime tracker!
+        if (!stats.history) stats.history = {}; 
+        stats.history[today] = stats.secondsListened; // Calendar history tracker!
+        // -------------------------
         localStorage.setItem('koofr_listening_stats', JSON.stringify(stats));
       }, 1000);
     }
