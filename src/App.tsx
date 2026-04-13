@@ -11,8 +11,8 @@ import { SeriesDetail } from './components/SeriesDetail';
 import { HomeView } from './components/HomeView';
 import { SearchResultsView } from './components/SearchResultsView';
 import { CollectionsView } from './components/CollectionsView';
-import { LibraryView } from './components/LibraryView'; // <-- Our new Wishlist!
-import { useState } from 'react';
+import { LibraryView } from './components/LibraryView'; 
+import { useState, useEffect } from 'react'; // <-- Added useEffect here!
 import { AnimatePresence } from 'motion/react';
 import { useAudio } from './context/AudioContext';
 
@@ -22,9 +22,19 @@ export default function App() {
   const [isFullPlayerOpen, setIsFullPlayerOpen] = useState(false);
   const [currentView, setCurrentView] = useState('home');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isPlayerVisible, setIsPlayerVisible] = useState(true);
+  
+  // I changed this default to false so it doesn't show an empty player when you first open the app!
+  const [isPlayerVisible, setIsPlayerVisible] = useState(false); 
+  
   const [selectedSeries, setSelectedSeries] = useState<any>(null);
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
+
+  // NEW: This automatically brings the mini player back up whenever a book is played!
+  useEffect(() => {
+    if (currentBook) {
+      setIsPlayerVisible(true);
+    }
+  }, [currentBook]);
 
   const handleViewChange = (view: string) => {
     setCurrentView(view);
@@ -61,7 +71,6 @@ export default function App() {
             </div>
           ) : currentView === 'library' ? (
             <div className="flex-1 overflow-y-auto custom-scrollbar">
-              {/* Library Tab now opens your Koofr Sync! */}
               <CollectionsView /> 
             </div>
           ) : currentView === 'stats' ? (
@@ -93,7 +102,6 @@ export default function App() {
             </div>
           ) : currentView === 'collections' ? (
             <div className="flex-1 overflow-y-auto custom-scrollbar">
-              {/* Collections Tab now opens your Wishlist! */}
               <LibraryView />
             </div>
           ) : (
@@ -116,6 +124,7 @@ export default function App() {
         book={currentBook as any}
       />
 
+      {/* The mini player visibility is controlled here! */}
       {isPlayerVisible && (
         <PlayerBar 
           onOpenFullPlayer={() => setIsFullPlayerOpen(true)} 
