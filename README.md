@@ -6,6 +6,36 @@
 ![React](https://img.shields.io/badge/React-19-blue)
 ![Capacitor](https://img.shields.io/badge/Capacitor-6-cyan)
 
+## 📸 Gallery
+
+### 🏠 Dashboard & Stats
+Track your listening habits with real-time stats, daily goals, and streaks.
+
+<p align="center">
+  <img src="./screenshots/Screenshot_20260413_232950_SIRIN.jpg" width="48%" alt="Home Dashboard" />
+  <img src="./screenshots/Screenshot_20260413_233132_SIRIN.jpg" width="48%" alt="Listening Statistics" />
+</p>
+
+### 📚 Library & Organization
+Browse your cloud library, manage series collections with stacked covers, and edit metadata on the fly.
+
+<p align="center">
+  <img src="./screenshots/Screenshot_20260413_233004_SIRIN.jpg" width="32%" alt="Library View" />
+  <img src="./screenshots/Screenshot_20260413_233102_SIRIN.jpg" width="32%" alt="Series View" />
+  <img src="./screenshots/Screenshot_20260413_233111_SIRIN.jpg" width="32%" alt="Authors View" />
+</p>
+
+### 🎧 Player Experience
+A clean, immersive, edge-to-edge player UI optimized for focus.
+
+<p align="center">
+  <img src="./screenshots/Screenshot_20260413_233052_SIRIN.jpg" width="32%" alt="Book Details" />
+  <img src="./screenshots/Screenshot_20260413_233122_SIRIN.jpg" width="32%" alt="Full Player UI" />
+  <img src="./screenshots/Screenshot_20260413_234557_SIRIN.jpg" width="32%" alt="Player Controls" />
+</p>
+
+---
+
 ---
 
 ## ✨ Features
@@ -18,7 +48,7 @@
 * **Immersive Experience:** Full-screen, edge-to-edge UI designed for tablets and mobile devices.
 * **Privacy First:** All credentials and metadata stay on your device. No third-party tracking.
 ## Note
-* some buttons, options are just placeholders. i am not a developer, rather i am an mbbs student, i made it with help of gemini on my tablet, i needed an app which can play audiobooks from cloud gdrive and koofr, but i cant find any good app, i cloned audiobookshelf ui, the app name is still audiobookshelf :). Gemini hallucinated, cant change the app name.I cant manage to connect gdrive directly, so i connected gdrive with koofr instead. It needs more improvement, if anyone can help, would be very helpful.
+* some buttons, options are just placeholders. i am not a developer, rather i am an mbbs student, i made it with help of gemini on my tablet, i needed an app which can play audiobooks from cloud gdrive and koofr, but i cant find any good app, i cloned audiobookshelf ui, the app name is still audiobookshelf :). Gemini hallucinated, cant change the app name.I cant manage to connect gdrive directly, so i connected gdrive with koofr instead. It needs more improvement, if anyone can help, would be very helpful
 ---
 
 ## 🚀 Getting Started
