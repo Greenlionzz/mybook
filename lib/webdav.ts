@@ -18,15 +18,20 @@ export const saveCustomCover = (bookId: string, coverUrl: string) => {
   localStorage.removeItem(`koofr_library_cache`); 
 };
 
-// Generates the Proxy URL with the auth token safely in the query string
+// NEW: Saves custom Title, Author, and Series to local storage
+export const saveBookMetadata = (bookId: string, title: string, author: string, series: string) => {
+  const meta = JSON.parse(localStorage.getItem('custom_meta') || '{}');
+  meta[bookId] = { title, author, series };
+  localStorage.setItem('custom_meta', JSON.stringify(meta));
+  localStorage.removeItem(`koofr_library_cache`); 
+};
+
 export const getDirectStreamUrl = (fullWebdavPath: string) => {
   const { user, pass } = getKoofrCredentials();
   if (!user || !pass) return null;
   
   const authToken = btoa(user + ':' + pass);
   const path = fullWebdavPath.startsWith('/') ? fullWebdavPath : `/${fullWebdavPath}`;
-  
-  // URL Encode the path so spaces in "Google Drive" don't break it
   const encodedFilePath = path.split('/').map(p => encodeURIComponent(p)).join('/');
   
   return `${PROXY_BASE_URL}${encodedFilePath}?auth=${authToken}`;
@@ -47,7 +52,6 @@ export const testWebdavConnection = async (url: string, user: string, pass: stri
   }
 };
 
-// NEW: Multi-Mount Deep Scanner
 export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
   const CACHE_KEY = `koofr_library_cache`;
 
@@ -63,11 +67,12 @@ export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
 
   const auth = btoa(user + ':' + pass);
   const customCovers = JSON.parse(localStorage.getItem('custom_covers') || '{}');
+  // NEW: Grab custom metadata from memory
+  const customMeta = JSON.parse(localStorage.getItem('custom_meta') || '{}');
   const defaultCover = "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=800";
 
   let allBooks: any[] = [];
 
-  // We explicitly define your mounts here using the ID from your screenshot!
   const locationsToScan = [
     { mountId: 'primary', path: '/Audiobooks', webdavPrefix: '/Koofr', source: 'Koofr' },
     { mountId: 'cbca00de-d02a-434b-8dae-23f2c2ac66fc', path: '/Audiobook', webdavPrefix: '/Google Drive', source: 'Google Drive' }
@@ -81,7 +86,7 @@ export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
         responseType: 'text'
       });
 
-      if (response.status !== 200) continue; // Skip if folder doesn't exist yet
+      if (response.status !== 200) continue; 
 
       const data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
       
@@ -92,10 +97,12 @@ export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
 
       const standaloneBooks = standaloneFiles.map((file: any) => {
         const fullWebdavPath = `${loc.webdavPrefix}${loc.path}/${file.name}`;
+        const meta = customMeta[file.name] || {}; // Pull saved tags
         return {
           id: file.name,
-          title: file.name.replace(/\.[^/.]+$/, ""),
-          author: loc.source, // Tags the book as Koofr or Google Drive!
+          title: meta.title || file.name.replace(/\.[^/.]+$/, ""),
+          author: meta.author || loc.source,
+          series: meta.series || null, // Add series!
           cover: customCovers[file.name] || defaultCover,
           description: "Single audio file.",
           status: "Unread",
@@ -107,11 +114,12 @@ export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
       
       allBooks = [...allBooks, ...standaloneBooks];
 
-      // Folders (Deep Scan)
+      // Folders
       const folders = data.files.filter((item: any) => item.type === 'dir');
       const folderBooks = await Promise.all(folders.map(async (folder: any) => {
         const folderPath = `${loc.path}/${folder.name}`;
         const fullWebdavPathPrefix = `${loc.webdavPrefix}${folderPath}`;
+        const meta = customMeta[folder.name] || {}; // Pull saved tags
         
         try {
           const folderRes = await CapacitorHttp.get({
@@ -130,8 +138,9 @@ export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
               const firstPartPath = `${fullWebdavPathPrefix}/${audioParts[0].name}`;
               return {
                 id: folder.name,
-                title: folder.name,
-                author: loc.source,
+                title: meta.title || folder.name,
+                author: meta.author || loc.source,
+                series: meta.series || null, // Add series!
                 cover: customCovers[folder.name] || defaultCover,
                 description: `${audioParts.length} parts found.`,
                 status: "Unread",
