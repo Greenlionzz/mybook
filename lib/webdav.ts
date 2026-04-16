@@ -3,14 +3,13 @@ import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 
 /**
  * Gets the current configuration from localStorage.
- * This now includes the proxy URL so users can set their own.
  */
 export const getKoofrCredentials = () => {
   return {
     url: localStorage.getItem('koofr_url') || 'https://app.koofr.net/dav/Koofr',
     user: localStorage.getItem('koofr_user') || '',
     pass: localStorage.getItem('koofr_pass') || '',
-    proxy: localStorage.getItem('koofr_proxy') || '' // Dynamically pulled from settings
+    proxy: localStorage.getItem('koofr_proxy') || '' 
   };
 };
 
@@ -51,17 +50,13 @@ export const saveBookMetadata = (bookId: string, title: string, author: string, 
  */
 export const getDirectStreamUrl = (fullWebdavPath: string) => {
   const { user, pass, proxy } = getKoofrCredentials();
-  
-  // If no proxy is set, the app won't be able to bypass CORS
   if (!user || !pass || !proxy) return null;
-    
+  
   const authToken = btoa(user + ':' + pass);
   const path = fullWebdavPath.startsWith('/') ? fullWebdavPath : `/${fullWebdavPath}`;
   const encodedFilePath = path.split('/').map(p => encodeURIComponent(p)).join('/');
-    
-  // Clean up proxy URL to ensure it doesn't end with a trailing slash
-  const cleanProxy = proxy.endsWith('/') ? proxy.slice(0, -1) : proxy;
   
+  const cleanProxy = proxy.endsWith('/') ? proxy.slice(0, -1) : proxy;
   return `${cleanProxy}${encodedFilePath}?auth=${authToken}`;
 };
 
@@ -80,16 +75,13 @@ export const testWebdavConnection = async (url: string, user: string, pass: stri
   }
 };
 
-// --- Add these to the bottom of src/lib/webdav.ts ---
-
-  export const exportLibraryData = async () => {
+export const exportLibraryData = async () => {
   try {
     const data = {
       meta: localStorage.getItem('custom_meta'),
       covers: localStorage.getItem('custom_covers'),
       stats: localStorage.getItem('koofr_listening_stats'),
       proxy: localStorage.getItem('koofr_proxy'),
-      // Make sure we include the reading progress we just added!
       progress: localStorage.getItem('book_progress'), 
       creds: {
         user: localStorage.getItem('koofr_user'),
@@ -97,14 +89,11 @@ export const testWebdavConnection = async (url: string, user: string, pass: stri
         url: localStorage.getItem('koofr_url')
       }
     };
-
+    
     const fileName = `sirin-backup-${new Date().toISOString().split('T')[0]}.json`;
     const fileContent = JSON.stringify(data, null, 2);
-
-    // 1. Create a native File object in memory
     const file = new File([fileContent], fileName, { type: 'application/json' });
-
-    // 2. Ask Android to open the Share/Save menu
+    
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({
         files: [file],
@@ -112,7 +101,6 @@ export const testWebdavConnection = async (url: string, user: string, pass: stri
         text: 'Here is your SIRIN audiobook library backup.'
       });
     } else {
-      // 3. Fallback for testing on a PC browser
       const url = window.URL.createObjectURL(file);
       const a = document.createElement('a');
       a.style.display = 'none';
@@ -125,15 +113,12 @@ export const testWebdavConnection = async (url: string, user: string, pass: stri
         document.body.removeChild(a);
       }, 100);
     }
-
   } catch (error: any) {
-    // If the user just cancels the share menu, we don't need to show an error
     if (error.name !== 'AbortError') {
       alert(`Export Failed!\nReason: ${error.message || JSON.stringify(error)}`);
     }
   }
 };
-
 
 export const importLibraryData = (jsonString: string) => {
   try {
@@ -142,15 +127,14 @@ export const importLibraryData = (jsonString: string) => {
     if (data.covers) localStorage.setItem('custom_covers', data.covers);
     if (data.stats) localStorage.setItem('koofr_listening_stats', data.stats);
     if (data.proxy) localStorage.setItem('koofr_proxy', data.proxy);
+    if (data.progress) localStorage.setItem('book_progress', data.progress);
     if (data.creds) {
       if (data.creds.user) localStorage.setItem('koofr_user', data.creds.user);
       if (data.creds.pass) localStorage.setItem('koofr_pass', data.creds.pass);
       if (data.creds.url) localStorage.setItem('koofr_url', data.creds.url);
     }
     
-    // Clear cache so it rebuilds with the imported metadata
     localStorage.removeItem('koofr_library_cache');
-    
     alert("Backup restored! Please restart the app or refresh the library.");
     window.location.reload(); 
   } catch (e) {
@@ -158,7 +142,6 @@ export const importLibraryData = (jsonString: string) => {
     console.error(e);
   }
 };
-
 
 export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
   const CACHE_KEY = `koofr_library_cache`;
@@ -172,14 +155,100 @@ export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
 
   const { user, pass } = getKoofrCredentials();
   if (!user || !pass) return [];
-
+  
   const auth = btoa(user + ':' + pass);
   const customCovers = JSON.parse(localStorage.getItem('custom_covers') || '{}');
   const customMeta = JSON.parse(localStorage.getItem('custom_meta') || '{}');
   const defaultCover = "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=800";
 
-  let allBooks: any[] = [];
+  // --- 🕷️ THE RECURSIVE SPIDER FUNCTION ---
+  const crawlKoofrDirectory = async (
+    mountId: string, 
+    currentPath: string, 
+    webdavPrefix: string, 
+    source: string, 
+    isRoot: boolean
+  ): Promise<any[]> => {
+    try {
+      const response = await CapacitorHttp.get({
+        url: `https://app.koofr.net/api/v2/mounts/${mountId}/files/list?path=${encodeURIComponent(currentPath)}`,
+        headers: { 'Authorization': `Basic ${auth}`, 'Accept': 'application/json' },
+        responseType: 'text'
+      });
 
+      if (response.status !== 200) return [];
+      const data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+
+      let books: any[] = [];
+      
+      // Separate files and folders
+      const audioFiles = data.files.filter((item: any) => 
+        item.type === 'file' && (item.name.endsWith('.mp3') || item.name.endsWith('.m4a') || item.name.endsWith('.m4b'))
+      ).sort((a: any, b: any) => a.name.localeCompare(b.name));
+      
+      const folders = data.files.filter((item: any) => item.type === 'dir');
+
+      // 1. Process Audio Files in the current directory
+      if (audioFiles.length > 0) {
+        if (isRoot) {
+          // If we are at the very root track, files are treated as standalone books
+          const standaloneBooks = audioFiles.map((file: any) => {
+            const fullWebdavPath = `${webdavPrefix}${currentPath === '/' ? '' : currentPath}/${file.name}`;
+            const meta = customMeta[file.name] || {}; 
+            return {
+              id: file.name,
+              title: meta.title || file.name.replace(/\.[^/.]+$/, ""),
+              author: meta.author || source,
+              series: meta.series || null,
+              cover: customCovers[file.name] || defaultCover,
+              description: "Single audio file.",
+              status: "Unread",
+              genre: "Cloud Audio",
+              dateAdded: new Date().toISOString(),
+              audioUrl: getDirectStreamUrl(fullWebdavPath)
+            };
+          });
+          books = [...books, ...standaloneBooks];
+        } else {
+          // If we are inside a folder, group the files into ONE book using the folder name
+          const folderName = currentPath.split('/').pop() || 'Unknown Folder';
+          const fullWebdavPathPrefix = `${webdavPrefix}${currentPath === '/' ? '' : currentPath}`;
+          const meta = customMeta[currentPath] || customMeta[folderName] || {};
+          const firstPartPath = `${fullWebdavPathPrefix}/${audioFiles[0].name}`;
+
+          books.push({
+            id: currentPath, // Using full path as ID prevents clashes if two folders share a name
+            title: meta.title || folderName,
+            author: meta.author || source,
+            series: meta.series || null,
+            cover: customCovers[currentPath] || customCovers[folderName] || defaultCover,
+            description: `${audioFiles.length} parts found.`,
+            status: "Unread",
+            genre: "Cloud Audio",
+            dateAdded: new Date().toISOString(),
+            audioUrl: getDirectStreamUrl(firstPartPath),
+            audioParts: audioFiles.map((part: any) => getDirectStreamUrl(`${fullWebdavPathPrefix}/${part.name}`))
+          });
+        }
+      }
+
+      // 2. Dive deeper into any subfolders recursively
+      // We use a sequential 'for...of' loop instead of Promise.all to prevent rate-limiting
+      for (const folder of folders) {
+        const subfolderPath = currentPath === '/' ? `/${folder.name}` : `${currentPath}/${folder.name}`;
+        const deeperBooks = await crawlKoofrDirectory(mountId, subfolderPath, webdavPrefix, source, false);
+        books = [...books, ...deeperBooks];
+      }
+
+      return books;
+    } catch (error) {
+      console.error(`Error crawling ${currentPath}:`, error);
+      return [];
+    }
+  };
+  // --- END SPIDER FUNCTION ---
+
+  let allBooks: any[] = [];
   const locationsToScan = [
     { mountId: 'primary', path: '/Audiobooks', webdavPrefix: '/Koofr', source: 'Koofr' },
     { mountId: 'cbca00de-d02a-434b-8dae-23f2c2ac66fc', path: '/Audiobook', webdavPrefix: '/Google Drive', source: 'Google Drive' }
@@ -187,79 +256,9 @@ export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
 
   for (const loc of locationsToScan) {
     try {
-      const response = await CapacitorHttp.get({
-        url: `https://app.koofr.net/api/v2/mounts/${loc.mountId}/files/list?path=${encodeURIComponent(loc.path)}`,
-        headers: { 'Authorization': `Basic ${auth}`, 'Accept': 'application/json' },
-        responseType: 'text'
-      });
-
-      if (response.status !== 200) continue; 
-      const data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-            
-      const standaloneFiles = data.files.filter((item: any) => 
-        item.type === 'file' && (item.name.endsWith('.mp3') || item.name.endsWith('.m4a') || item.name.endsWith('.m4b'))
-      );
-
-      const standaloneBooks = standaloneFiles.map((file: any) => {
-        const fullWebdavPath = `${loc.webdavPrefix}${loc.path}/${file.name}`;
-        const meta = customMeta[file.name] || {}; 
-        return {
-          id: file.name,
-          title: meta.title || file.name.replace(/\.[^/.]+$/, ""),
-          author: meta.author || loc.source,
-          series: meta.series || null,
-          cover: customCovers[file.name] || defaultCover,
-          description: "Single audio file.",
-          status: "Unread",
-          genre: "Cloud Audio",
-          dateAdded: new Date().toISOString(),
-          audioUrl: getDirectStreamUrl(fullWebdavPath)
-        };
-      });
-            
-      allBooks = [...allBooks, ...standaloneBooks];
-
-      const folders = data.files.filter((item: any) => item.type === 'dir');
-      const folderBooks = await Promise.all(folders.map(async (folder: any) => {
-        const folderPath = `${loc.path}/${folder.name}`;
-        const fullWebdavPathPrefix = `${loc.webdavPrefix}${folderPath}`;
-        const meta = customMeta[folder.name] || {}; 
-                
-        try {
-          const folderRes = await CapacitorHttp.get({
-            url: `https://app.koofr.net/api/v2/mounts/${loc.mountId}/files/list?path=${encodeURIComponent(folderPath)}`,
-            headers: { 'Authorization': `Basic ${auth}`, 'Accept': 'application/json' },
-            responseType: 'text'
-          });
-
-          if (folderRes.status === 200) {
-            const folderData = typeof folderRes.data === 'string' ? JSON.parse(folderRes.data) : folderRes.data;
-            const audioParts = folderData.files.filter((item: any) => 
-              item.type === 'file' && (item.name.endsWith('.mp3') || item.name.endsWith('.m4a') || item.name.endsWith('.m4b'))
-            ).sort((a: any, b: any) => a.name.localeCompare(b.name));
-
-            if (audioParts.length > 0) {
-              const firstPartPath = `${fullWebdavPathPrefix}/${audioParts[0].name}`;
-              return {
-                id: folder.name,
-                title: meta.title || folder.name,
-                author: meta.author || loc.source,
-                series: meta.series || null,
-                cover: customCovers[folder.name] || defaultCover,
-                description: `${audioParts.length} parts found.`,
-                status: "Unread",
-                genre: "Cloud Audio",
-                dateAdded: new Date().toISOString(),
-                audioUrl: getDirectStreamUrl(firstPartPath),
-                audioParts: audioParts.map((part: any) => getDirectStreamUrl(`${fullWebdavPathPrefix}/${part.name}`))
-              };
-            }
-          }
-        } catch (e) { }
-        return null;
-      }));
-
-      allBooks = [...allBooks, ...folderBooks.filter(book => book !== null)];
+      // Start the recursive crawl for each mount point!
+      const locBooks = await crawlKoofrDirectory(loc.mountId, loc.path, loc.webdavPrefix, loc.source, true);
+      allBooks = [...allBooks, ...locBooks];
     } catch (error) {
       console.error(`Error scanning ${loc.source}:`, error);
     }
