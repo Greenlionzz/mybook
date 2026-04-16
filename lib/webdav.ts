@@ -21,6 +21,21 @@ export const saveCustomCover = (bookId: string, coverUrl: string) => {
   localStorage.removeItem(`koofr_library_cache`); 
 };
 
+// Save the current playback time (in seconds) for a specific book
+export const saveBookProgress = (bookId: string, currentTime: number) => {
+  if (!bookId || currentTime === undefined) return;
+  const progress = JSON.parse(localStorage.getItem('book_progress') || '{}');
+  progress[bookId] = currentTime;
+  localStorage.setItem('book_progress', JSON.stringify(progress));
+};
+
+// Get the saved playback time for a specific book
+export const getBookProgress = (bookId: string): number => {
+  if (!bookId) return 0;
+  const progress = JSON.parse(localStorage.getItem('book_progress') || '{}');
+  return progress[bookId] || 0;
+};
+
 /**
  * Saves custom Title, Author, and Series to local storage.
  */
