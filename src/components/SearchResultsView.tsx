@@ -3,20 +3,29 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Search, Book, User, Layers } from 'lucide-react';
 import { BookCard } from './BookCard';
 
-// 1. We add 'library' to the props so the parent can pass the live data in
 interface SearchResultsViewProps {
-  query: string;
-  library: any[]; 
+  query?: string; // Made optional just in case
+  library?: any[]; // Made optional just in case
   onSelectBook: (book: any) => void;
 }
 
-export function SearchResultsView({ query, library, onSelectBook }: SearchResultsViewProps) {
+// 1. We assign default values right in the parameters so they are NEVER undefined
+export function SearchResultsView({ 
+  query = '', 
+  library = [], 
+  onSelectBook 
+}: SearchResultsViewProps) {
   
-  // 2. We filter the live 'library' array instead of the static constant
-  const filteredBooks = library.filter(book => 
-    (book.title || '').toLowerCase().includes(query.toLowerCase()) ||
-    (book.author || '').toLowerCase().includes(query.toLowerCase())
-  );
+  // 2. We double-check that library is actually an array before filtering
+  const safeLibrary = Array.isArray(library) ? library : [];
+  const safeQuery = query.toLowerCase();
+
+  const filteredBooks = safeLibrary.filter(book => {
+    // 3. We use optional chaining (book?.title) just in case a book object is malformed
+    const titleMatch = (book?.title || '').toLowerCase().includes(safeQuery);
+    const authorMatch = (book?.author || '').toLowerCase().includes(safeQuery);
+    return titleMatch || authorMatch;
+  });
 
   return (
     <div className="p-6 pb-32 max-w-7xl mx-auto w-full flex flex-col gap-8">
@@ -33,7 +42,7 @@ export function SearchResultsView({ query, library, onSelectBook }: SearchResult
           <AnimatePresence mode="popLayout">
             {filteredBooks.map((book, index) => (
               <motion.div
-                key={book.id}
+                key={book?.id || index} // Fallback key
                 layout
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -41,10 +50,10 @@ export function SearchResultsView({ query, library, onSelectBook }: SearchResult
                 transition={{ duration: 0.2, delay: index * 0.03 }}
               >
                 <BookCard 
-                  id={book.id}
-                  title={book.title}
-                  author={book.author}
-                  cover={book.cover}
+                  id={book?.id}
+                  title={book?.title || 'Unknown Title'}
+                  author={book?.author || 'Unknown Author'}
+                  cover={book?.cover}
                   onClick={() => onSelectBook(book)}
                 />
               </motion.div>
