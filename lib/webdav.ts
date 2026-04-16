@@ -89,6 +89,8 @@ export const testWebdavConnection = async (url: string, user: string, pass: stri
       covers: localStorage.getItem('custom_covers'),
       stats: localStorage.getItem('koofr_listening_stats'),
       proxy: localStorage.getItem('koofr_proxy'),
+      // Make sure we include the reading progress we just added!
+      progress: localStorage.getItem('book_progress'), 
       creds: {
         user: localStorage.getItem('koofr_user'),
         pass: localStorage.getItem('koofr_pass'),
@@ -99,28 +101,36 @@ export const testWebdavConnection = async (url: string, user: string, pass: stri
     const fileName = `sirin-backup-${new Date().toISOString().split('T')[0]}.json`;
     const fileContent = JSON.stringify(data, null, 2);
 
-    // 1. Ask Android for Storage Permission
-    try {
-      const permStatus = await Filesystem.requestPermissions();
-      console.log("Permission status:", permStatus);
-    } catch (e) {
-      console.log("Permission request not supported on this version.");
+    // 1. Create a native File object in memory
+    const file = new File([fileContent], fileName, { type: 'application/json' });
+
+    // 2. Ask Android to open the Share/Save menu
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: 'SIRIN Backup',
+        text: 'Here is your SIRIN audiobook library backup.'
+      });
+    } else {
+      // 3. Fallback for testing on a PC browser
+      const url = window.URL.createObjectURL(file);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
     }
 
-    // 2. Attempt to write the file
-    const result = await Filesystem.writeFile({
-      path: fileName,
-      data: fileContent,
-      directory: Directory.Documents,
-      encoding: Encoding.UTF8,
-    });
-
-    // 3. Success Alert
-    alert(`Backup successful!\nFile saved to: ${result.uri}`);
-
   } catch (error: any) {
-    // 4. ERROR ALERT: This will tell us EXACTLY what to fix!
-    alert(`Export Failed!\nReason: ${error.message || JSON.stringify(error)}`);
+    // If the user just cancels the share menu, we don't need to show an error
+    if (error.name !== 'AbortError') {
+      alert(`Export Failed!\nReason: ${error.message || JSON.stringify(error)}`);
+    }
   }
 };
 
