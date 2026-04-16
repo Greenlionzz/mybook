@@ -108,29 +108,39 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (!audioRef.current) return;
 
     if (currentBook?.id !== book.id) {
-      // Save current book's progress before switching to the new one
+      // 1. Save current book's progress before switching
       if (currentBook) {
         saveBookProgress(currentBook.id, audioRef.current.currentTime);
       }
 
       setCurrentBook(book);
-      audioRef.current.src = book.audioUrl || 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+      const audio = audioRef.current;
+      
+      // 2. Pause and swap the source
+      audio.pause();
+      audio.src = book.audioUrl || 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
 
-      // --- NEW: Load saved time and jump to it ---
       const savedTime = getBookProgress(book.id);
-      
-      const handleLoadedMetadata = () => {
-        if (savedTime > 0) {
-          audioRef.current!.currentTime = savedTime;
-        }
-        audioRef.current!.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      };
-      
-      audioRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
-      // ------------------------------------------
 
-      audioRef.current.play();
-      setIsPlaying(true);
+      // 3. THE BULLETPROOF SEEK LOGIC
+      const onReadyToPlay = () => {
+        if (savedTime > 0) {
+          audio.currentTime = savedTime;
+          setCurrentTime(savedTime); // Update the React UI instantly
+        }
+        audio.play();
+        setIsPlaying(true);
+        
+        // Remove listener so it doesn't fire randomly during playback
+        audio.removeEventListener('canplay', onReadyToPlay);
+      };
+
+      // Listen for 'canplay' instead of 'loadedmetadata'
+      audio.addEventListener('canplay', onReadyToPlay);
+      
+      // 4. Force Android to fetch the stream (Crucial for Capacitor!)
+      audio.load();
+
     } else {
       togglePlay();
     }
