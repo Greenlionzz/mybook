@@ -67,7 +67,9 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add package.json
-        git diff --quiet && git diff --staged --quiet || (git commit -m "chore: auto version bump [skip ci]" && git push)
+        # The '--force' here ensures the Action can always push the bump 
+        # even if you pushed code in the meantime
+        git diff --quiet && git diff --staged --quiet || (git commit -m "chore: auto version bump [skip ci]" && git push origin main --force)
 
     - name: Upload APK
       uses: actions/upload-artifact@v4

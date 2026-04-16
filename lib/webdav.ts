@@ -67,28 +67,43 @@ export const testWebdavConnection = async (url: string, user: string, pass: stri
 // --- Add these to the bottom of src/lib/webdav.ts ---
 
 export const exportLibraryData = () => {
-  const data = {
-    meta: localStorage.getItem('custom_meta'),
-    covers: localStorage.getItem('custom_covers'),
-    stats: localStorage.getItem('koofr_listening_stats'),
-    proxy: localStorage.getItem('koofr_proxy'),
-    creds: {
-      user: localStorage.getItem('koofr_user'),
-      pass: localStorage.getItem('koofr_pass'),
-      url: localStorage.getItem('koofr_url')
-    }
-  };
-  
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `sirin-backup-${new Date().toISOString().split('T')[0]}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  try {
+    const data = {
+      meta: localStorage.getItem('custom_meta'),
+      covers: localStorage.getItem('custom_covers'),
+      stats: localStorage.getItem('koofr_listening_stats'),
+      proxy: localStorage.getItem('koofr_proxy'),
+      creds: {
+        user: localStorage.getItem('koofr_user'),
+        pass: localStorage.getItem('koofr_pass'),
+        url: localStorage.getItem('koofr_url')
+      }
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    
+    a.style.display = 'none';
+    a.href = url;
+    a.download = `sirin-backup-${new Date().toISOString().split('T')[0]}.json`;
+    
+    document.body.appendChild(a);
+    a.click();
+    
+    // Clean up
+    setTimeout(() => {
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }, 100);
+    
+    console.log("Export triggered");
+  } catch (error) {
+    console.error("Export failed", error);
+    alert("Export failed: " + error);
+  }
 };
+
 
 export const importLibraryData = (jsonString: string) => {
   try {

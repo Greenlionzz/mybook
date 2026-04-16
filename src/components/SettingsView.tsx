@@ -227,13 +227,16 @@ export function SettingsView() {
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Button 
-                variant="outline" 
-                className="border-white/10 hover:bg-white/5 text-white gap-2 h-12"
-                onClick={() => exportLibraryData()}
-              >
-                <RefreshCw className="w-4 h-4" />
-                Export Data
-              </Button>
+  variant="outline" 
+  className="border-white/10 hover:bg-white/5 text-white gap-2 h-12"
+  onClick={() => {
+    // Call the function directly since it's imported at the top
+    exportLibraryData();
+  }}
+>
+  <RefreshCw className="w-4 h-4" />
+  Export Data
+</Button>
               
               <div className="relative">
                 <Button className="w-full bg-neutral-800 hover:bg-neutral-700 text-white gap-2 h-12">
