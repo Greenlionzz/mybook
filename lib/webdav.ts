@@ -161,11 +161,9 @@ export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
   const customMeta = JSON.parse(localStorage.getItem('custom_meta') || '{}');
   const defaultCover = "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=800";
 
-  // 1. Helper to match audio files (Now completely CASE INSENSITIVE!)
   const isAudio = (name: string) => /\.(mp3|m4a|m4b)$/i.test(name);
   const isM4B = (name: string) => /\.m4b$/i.test(name);
 
-  // 2. Helper for Smart Titles (Turns "01" into "Goblin Slayer - 01")
   const getSmartTitle = (path: string, fileName?: string) => {
     const parts = path.split('/').filter(Boolean);
     let name = fileName ? fileName.replace(/\.[^/.]+$/, "") : (parts[parts.length - 1] || 'Unknown');
@@ -177,7 +175,8 @@ export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
   };
 
   // --- 🕷️ THE SMARTER RECURSIVE SPIDER ---
-  const crawlKoofrDirectory = async (mountId: string, currentPath: string, webdavPrefix: string, source: string): Promise<any[]> => {
+  // Notice the new 'isRoot' parameter here
+  const crawlKoofrDirectory = async (mountId: string, currentPath: string, webdavPrefix: string, source: string, isRoot: boolean): Promise<any[]> => {
     try {
       const response = await CapacitorHttp.get({
         url: `https://app.koofr.net/api/v2/mounts/${mountId}/files/list?path=${encodeURIComponent(currentPath)}`,
@@ -194,54 +193,78 @@ export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
                                    .sort((a: any, b: any) => a.name.localeCompare(b.name));
       const folders = data.files.filter((item: any) => item.type === 'dir');
 
-      // A. Process M4B files (ALWAYS Standalone Books)
-      const m4bFiles = audioFiles.filter((f: any) => isM4B(f.name));
-      for (const file of m4bFiles) {
-        const fullWebdavPath = `${webdavPrefix}${currentPath === '/' ? '' : currentPath}/${file.name}`;
-        const meta = customMeta[file.name] || {}; 
-        const smartTitle = getSmartTitle(currentPath, file.name);
+      if (isRoot) {
+        // 1. ROOT LEVEL: Every audio file here is its own standalone book
+        for (const file of audioFiles) {
+          const fullWebdavPath = `${webdavPrefix}${currentPath === '/' ? '' : currentPath}/${file.name}`;
+          const meta = customMeta[file.name] || {}; 
+          const smartTitle = getSmartTitle(currentPath, file.name);
 
-        books.push({
-          id: `${currentPath}/${file.name}`, // Guaranteed unique ID
-          title: meta.title || smartTitle,
-          author: meta.author || source,
-          series: meta.series || null,
-          cover: customCovers[file.name] || customCovers[currentPath] || defaultCover,
-          description: "Audiobook (M4B)",
-          status: "Unread",
-          genre: "Cloud Audio",
-          dateAdded: new Date().toISOString(),
-          audioUrl: getDirectStreamUrl(fullWebdavPath)
-        });
+          books.push({
+            id: `${currentPath}/${file.name}`, 
+            title: meta.title || smartTitle,
+            author: meta.author || source,
+            series: meta.series || null,
+            cover: customCovers[file.name] || customCovers[currentPath] || defaultCover,
+            description: isM4B(file.name) ? "Audiobook (M4B)" : "Single audio file.",
+            status: "Unread",
+            genre: "Cloud Audio",
+            dateAdded: new Date().toISOString(),
+            audioUrl: getDirectStreamUrl(fullWebdavPath)
+          });
+        }
+      } else {
+        // 2. SUBFOLDER LEVEL: Group MP3s together, but keep M4Bs standalone
+        
+        // A. Process M4B files (ALWAYS Standalone Books)
+        const m4bFiles = audioFiles.filter((f: any) => isM4B(f.name));
+        for (const file of m4bFiles) {
+          const fullWebdavPath = `${webdavPrefix}${currentPath === '/' ? '' : currentPath}/${file.name}`;
+          const meta = customMeta[file.name] || {}; 
+          const smartTitle = getSmartTitle(currentPath, file.name);
+
+          books.push({
+            id: `${currentPath}/${file.name}`,
+            title: meta.title || smartTitle,
+            author: meta.author || source,
+            series: meta.series || null,
+            cover: customCovers[file.name] || customCovers[currentPath] || defaultCover,
+            description: "Audiobook (M4B)",
+            status: "Unread",
+            genre: "Cloud Audio",
+            dateAdded: new Date().toISOString(),
+            audioUrl: getDirectStreamUrl(fullWebdavPath)
+          });
+        }
+
+        // B. Process MP3/M4A files (Grouped by their parent folder)
+        const partsFiles = audioFiles.filter((f: any) => !isM4B(f.name));
+        if (partsFiles.length > 0) {
+          const fullWebdavPathPrefix = `${webdavPrefix}${currentPath === '/' ? '' : currentPath}`;
+          const meta = customMeta[currentPath] || {};
+          const smartTitle = getSmartTitle(currentPath);
+          const firstPartPath = `${fullWebdavPathPrefix}/${partsFiles[0].name}`;
+
+          books.push({
+            id: currentPath, 
+            title: meta.title || smartTitle,
+            author: meta.author || source,
+            series: meta.series || null,
+            cover: customCovers[currentPath] || defaultCover,
+            description: `${partsFiles.length} parts found.`,
+            status: "Unread",
+            genre: "Cloud Audio",
+            dateAdded: new Date().toISOString(),
+            audioUrl: getDirectStreamUrl(firstPartPath),
+            audioParts: partsFiles.map((part: any) => getDirectStreamUrl(`${fullWebdavPathPrefix}/${part.name}`))
+          });
+        }
       }
 
-      // B. Process MP3/M4A files (Grouped by their parent folder)
-      const partsFiles = audioFiles.filter((f: any) => !isM4B(f.name));
-      if (partsFiles.length > 0) {
-        const fullWebdavPathPrefix = `${webdavPrefix}${currentPath === '/' ? '' : currentPath}`;
-        const meta = customMeta[currentPath] || {};
-        const smartTitle = getSmartTitle(currentPath);
-        const firstPartPath = `${fullWebdavPathPrefix}/${partsFiles[0].name}`;
-
-        books.push({
-          id: currentPath, 
-          title: meta.title || smartTitle,
-          author: meta.author || source,
-          series: meta.series || null,
-          cover: customCovers[currentPath] || defaultCover,
-          description: `${partsFiles.length} parts found.`,
-          status: "Unread",
-          genre: "Cloud Audio",
-          dateAdded: new Date().toISOString(),
-          audioUrl: getDirectStreamUrl(firstPartPath),
-          audioParts: partsFiles.map((part: any) => getDirectStreamUrl(`${fullWebdavPathPrefix}/${part.name}`))
-        });
-      }
-
-      // C. Dive deeper sequentially
+      // C. Dive deeper sequentially (Pass 'false' for isRoot because we are going into a folder)
       for (const folder of folders) {
         const subfolderPath = currentPath === '/' ? `/${folder.name}` : `${currentPath}/${folder.name}`;
-        const deeperBooks = await crawlKoofrDirectory(mountId, subfolderPath, webdavPrefix, source);
+        const deeperBooks = await crawlKoofrDirectory(mountId, subfolderPath, webdavPrefix, source, false);
         books = [...books, ...deeperBooks];
       }
 
@@ -255,9 +278,6 @@ export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
   // --- END SPIDER FUNCTION ---
 
   let allBooks: any[] = [];
-  
-  // ⚠️ IMPORTANT: If your "Light Novels" folder is NOT inside an "Audiobooks" folder on Koofr,
-  // you need to add `{ mountId: 'primary', path: '/Light Novels', webdavPrefix: '/Koofr', source: 'Koofr' }` to this array!
   const locationsToScan = [
     { mountId: 'primary', path: '/Audiobooks', webdavPrefix: '/Koofr', source: 'Koofr' },
     { mountId: 'cbca00de-d02a-434b-8dae-23f2c2ac66fc', path: '/Audiobook', webdavPrefix: '/Google Drive', source: 'Google Drive' }
@@ -265,7 +285,8 @@ export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
 
   for (const loc of locationsToScan) {
     try {
-      const locBooks = await crawlKoofrDirectory(loc.mountId, loc.path, loc.webdavPrefix, loc.source);
+      // Pass 'true' for the initial scan because we are starting at the root!
+      const locBooks = await crawlKoofrDirectory(loc.mountId, loc.path, loc.webdavPrefix, loc.source, true);
       allBooks = [...allBooks, ...locBooks];
     } catch (error) {
       console.error(`Error scanning ${loc.source}:`, error);
