@@ -1,18 +1,21 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, Book, User, Layers } from 'lucide-react';
-import { BOOKS } from '@/src/constants';
 import { BookCard } from './BookCard';
 
+// 1. We add 'library' to the props so the parent can pass the live data in
 interface SearchResultsViewProps {
   query: string;
+  library: any[]; 
   onSelectBook: (book: any) => void;
 }
 
-export function SearchResultsView({ query, onSelectBook }: SearchResultsViewProps) {
-  const filteredBooks = BOOKS.filter(book => 
-    book.title.toLowerCase().includes(query.toLowerCase()) ||
-    book.author.toLowerCase().includes(query.toLowerCase())
+export function SearchResultsView({ query, library, onSelectBook }: SearchResultsViewProps) {
+  
+  // 2. We filter the live 'library' array instead of the static constant
+  const filteredBooks = library.filter(book => 
+    (book.title || '').toLowerCase().includes(query.toLowerCase()) ||
+    (book.author || '').toLowerCase().includes(query.toLowerCase())
   );
 
   return (

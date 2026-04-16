@@ -115,9 +115,10 @@ export default function App() {
           {globalSearchQuery ? (
             <div className="flex-1 overflow-y-auto custom-scrollbar">
               <SearchResultsView 
-                query={globalSearchQuery} 
-                onSelectBook={setSelectedBook} 
-              />
+  query={searchQuery} 
+  library={library} 
+  onSelectBook={playBook} 
+/>
             </div>
           ) : currentView === 'home' ? (
             <div className="flex-1 overflow-y-auto custom-scrollbar">
