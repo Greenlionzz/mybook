@@ -13,15 +13,16 @@ import {
   User,
   Link2,
   Server,
-  Plus
+  Plus,
+  Copy
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { testWebdavConnection, exportLibraryData, importLibraryData } from '@/lib/webdav';
-import pkg from '../../package.json'; // Ensure this path correctly points to your root package.json
+import { testWebdavConnection, importLibraryData } from '@/lib/webdav'; // Removed exportLibraryData since we handle it here now
+import pkg from '../../package.json';
 
 export function SettingsView() {
   // Koofr State Management
@@ -30,6 +31,9 @@ export function SettingsView() {
   const [koofrPass, setKoofrPass] = useState('');
   const [koofrProxy, setKoofrProxy] = useState('');
   const [isTesting, setIsTesting] = useState(false);
+  
+  // NEW: State to hold the backup data
+  const [backupReady, setBackupReady] = useState<string | null>(null);
 
   // Load saved credentials when the page opens
   useEffect(() => {
@@ -105,7 +109,6 @@ export function SettingsView() {
           <Cloud className="w-5 h-5" />
           <h3 className="text-lg font-bold uppercase tracking-widest text-sm">Cloud Connections</h3>
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Google Drive Status (Informational) */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
@@ -226,20 +229,65 @@ export function SettingsView() {
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Button 
-  variant="outline" 
-  className="border-white/10 hover:bg-white/5 text-white gap-2 h-12"
-  onClick={() => {
-    // Call the function directly since it's imported at the top
-    exportLibraryData();
-  }}
->
-  <RefreshCw className="w-4 h-4" />
-  Export Data
-</Button>
               
-              <div className="relative">
-                <Button className="w-full bg-neutral-800 hover:bg-neutral-700 text-white gap-2 h-12">
+              {/* THE NEW EXPORT LOGIC */}
+              {!backupReady ? (
+                <Button 
+                  variant="outline" 
+                  className="border-white/10 hover:bg-white/5 text-white gap-2 h-12"
+                  onClick={() => {
+                    // Gather all the data including audiobook progress
+                    const data = {
+                      meta: localStorage.getItem('custom_meta'),
+                      covers: localStorage.getItem('custom_covers'),
+                      stats: localStorage.getItem('koofr_listening_stats'),
+                      proxy: localStorage.getItem('koofr_proxy'),
+                      progress: localStorage.getItem('book_progress'),
+                      creds: {
+                        user: localStorage.getItem('koofr_user'),
+                        pass: localStorage.getItem('koofr_pass'),
+                        url: localStorage.getItem('koofr_url')
+                      }
+                    };
+                    // Set it to state to reveal the download links
+                    setBackupReady(JSON.stringify(data, null, 2));
+                  }}
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Generate Backup
+                </Button>
+              ) : (
+                <div className="flex flex-col gap-2 relative z-10">
+                  {/* Physical Download Link */}
+                  <a 
+                    href={`data:text/json;charset=utf-8,${encodeURIComponent(backupReady)}`}
+                    download={`sirin-backup-${new Date().toISOString().split('T')[0]}.json`}
+                    className="flex items-center justify-center w-full bg-primary hover:bg-primary/90 text-white font-bold h-10 rounded-md gap-2 text-sm"
+                    onClick={() => setTimeout(() => setBackupReady(null), 2000)}
+                  >
+                    <HardDrive className="w-4 h-4" />
+                    Save File
+                  </a>
+                  
+                  {/* Clipboard Fallback */}
+                  <Button 
+                    variant="outline" 
+                    className="w-full text-neutral-300 border-white/10 h-10 text-xs"
+                    onClick={() => {
+                      navigator.clipboard.writeText(backupReady);
+                      alert("Backup copied to clipboard! Paste it securely in a Notes app.");
+                      setBackupReady(null);
+                    }}
+                  >
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy Text
+                  </Button>
+                </div>
+              )}
+
+              {/* IMPORT BUTTON LOGIC */}
+              <div className="relative h-12">
+                <Button className="w-full h-full bg-neutral-800 hover:bg-neutral-700 text-white gap-2">
                   <Plus className="w-4 h-4" />
                   Import Data
                 </Button>
