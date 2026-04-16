@@ -1,4 +1,5 @@
 import { CapacitorHttp } from '@capacitor/core';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 
 /**
  * Gets the current configuration from localStorage.
@@ -66,41 +67,42 @@ export const testWebdavConnection = async (url: string, user: string, pass: stri
 
 // --- Add these to the bottom of src/lib/webdav.ts ---
 
-export const exportLibraryData = () => {
+export const exportLibraryData = async () => {
+  const data = {
+    meta: localStorage.getItem('custom_meta'),
+    covers: localStorage.getItem('custom_covers'),
+    stats: localStorage.getItem('koofr_listening_stats'),
+    proxy: localStorage.getItem('koofr_proxy'),
+    creds: {
+      user: localStorage.getItem('koofr_user'),
+      pass: localStorage.getItem('koofr_pass'),
+      url: localStorage.getItem('koofr_url')
+    }
+  };
+
+  const fileName = `sirin-backup-${new Date().toISOString().split('T')[0]}.json`;
+  const fileContent = JSON.stringify(data, null, 2);
+
   try {
-    const data = {
-      meta: localStorage.getItem('custom_meta'),
-      covers: localStorage.getItem('custom_covers'),
-      stats: localStorage.getItem('koofr_listening_stats'),
-      proxy: localStorage.getItem('koofr_proxy'),
-      creds: {
-        user: localStorage.getItem('koofr_user'),
-        pass: localStorage.getItem('koofr_pass'),
-        url: localStorage.getItem('koofr_url')
-      }
-    };
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    // This part runs on Android
+    await Filesystem.writeFile({
+      path: fileName,
+      data: fileContent,
+      directory: Directory.Documents,
+      encoding: Encoding.UTF8,
+    });
+    alert("Backup saved to your 'Documents' folder!");
+  } catch (e) {
+    // Fallback for browser/editor testing
+    const blob = new Blob([fileContent], { type: 'application/json' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
-    
-    a.style.display = 'none';
     a.href = url;
-    a.download = `sirin-backup-${new Date().toISOString().split('T')[0]}.json`;
-    
+    a.download = fileName;
     document.body.appendChild(a);
     a.click();
-    
-    // Clean up
-    setTimeout(() => {
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    }, 100);
-    
-    console.log("Export triggered");
-  } catch (error) {
-    console.error("Export failed", error);
-    alert("Export failed: " + error);
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   }
 };
 
