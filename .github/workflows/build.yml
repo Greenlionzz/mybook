@@ -21,7 +21,7 @@ jobs:
         node-version: '20'
         
     - name: Run Version Bump
-      run: node version-bump.js
+      run: node version-bump.cjs
 
     - name: Install Web Dependencies
       run: npm install && npm install webdav @capacitor/core
