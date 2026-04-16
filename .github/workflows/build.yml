@@ -13,7 +13,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0 # Important for pushing changes back
+        fetch-depth: 0 
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -38,7 +38,6 @@ jobs:
     - name: Setup Capacitor and Android Platform
       run: |
         npm install
-        # Creates the Capacitor config if it doesn't exist yet
         if [ ! -f capacitor.config.json ] && [ ! -f capacitor.config.ts ]; then
           npx cap init "SIRIN" "com.mytime.app" --web-dir=dist
         fi
@@ -68,11 +67,10 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add package.json
-        # Only commit if there are changes to avoid erroring out
         git diff --quiet && git diff --staged --quiet || (git commit -m "chore: auto version bump [skip ci]" && git push)
 
     - name: Upload APK
-      uses: artifacts/upload-artifact@v4
+      uses: actions/upload-artifact@v4
       with:
         name: sirin-debug-apk
         path: android/app/build/outputs/apk/debug/app-debug.apk
