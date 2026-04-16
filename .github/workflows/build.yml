@@ -12,11 +12,16 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Important for pushing changes back
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
+        
+    - name: Run Version Bump
+      run: node version-bump.js
 
     - name: Install Web Dependencies
       run: npm install && npm install webdav @capacitor/core
@@ -33,12 +38,10 @@ jobs:
     - name: Setup Capacitor and Android Platform
       run: |
         npm install
-        
         # Creates the Capacitor config if it doesn't exist yet
         if [ ! -f capacitor.config.json ] && [ ! -f capacitor.config.ts ]; then
           npx cap init "SIRIN" "com.mytime.app" --web-dir=dist
         fi
-        
         npx cap add android
         npx cap sync android
 
@@ -60,8 +63,16 @@ jobs:
       working-directory: ./android
       run: ./gradlew assembleDebug
 
+    - name: Commit and Push Version Bump
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add package.json
+        # Only commit if there are changes to avoid erroring out
+        git diff --quiet && git diff --staged --quiet || (git commit -m "chore: auto version bump [skip ci]" && git push)
+
     - name: Upload APK
-      uses: actions/upload-artifact@v4
+      uses: artifacts/upload-artifact@v4
       with:
         name: sirin-debug-apk
         path: android/app/build/outputs/apk/debug/app-debug.apk

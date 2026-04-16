@@ -64,6 +64,57 @@ export const testWebdavConnection = async (url: string, user: string, pass: stri
   }
 };
 
+// --- Add these to the bottom of src/lib/webdav.ts ---
+
+export const exportLibraryData = () => {
+  const data = {
+    meta: localStorage.getItem('custom_meta'),
+    covers: localStorage.getItem('custom_covers'),
+    stats: localStorage.getItem('koofr_listening_stats'),
+    proxy: localStorage.getItem('koofr_proxy'),
+    creds: {
+      user: localStorage.getItem('koofr_user'),
+      pass: localStorage.getItem('koofr_pass'),
+      url: localStorage.getItem('koofr_url')
+    }
+  };
+  
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `sirin-backup-${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+export const importLibraryData = (jsonString: string) => {
+  try {
+    const data = JSON.parse(jsonString);
+    if (data.meta) localStorage.setItem('custom_meta', data.meta);
+    if (data.covers) localStorage.setItem('custom_covers', data.covers);
+    if (data.stats) localStorage.setItem('koofr_listening_stats', data.stats);
+    if (data.proxy) localStorage.setItem('koofr_proxy', data.proxy);
+    if (data.creds) {
+      if (data.creds.user) localStorage.setItem('koofr_user', data.creds.user);
+      if (data.creds.pass) localStorage.setItem('koofr_pass', data.creds.pass);
+      if (data.creds.url) localStorage.setItem('koofr_url', data.creds.url);
+    }
+    
+    // Clear cache so it rebuilds with the imported metadata
+    localStorage.removeItem('koofr_library_cache');
+    
+    alert("Backup restored! Please restart the app or refresh the library.");
+    window.location.reload(); 
+  } catch (e) {
+    alert("Failed to restore backup. The file might be corrupted.");
+    console.error(e);
+  }
+};
+
+
 export const fetchCloudLibrary = async (forceRefresh: boolean = false) => {
   const CACHE_KEY = `koofr_library_cache`;
   
